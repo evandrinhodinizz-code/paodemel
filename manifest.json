@@ -1,0 +1,12 @@
+{
+  "name": "Pão de Mel",
+  "short_name": "Pão de Mel",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbf4ec",
+  "theme_color": "#7a3e1d",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

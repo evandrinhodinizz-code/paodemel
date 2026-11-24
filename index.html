@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#241710">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icone.svg">
+<title>Pão de Mel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<style>
+:root{--kraft:#c6a075;--tinta:#241710;--papel:#fffcf6;--verm:#a8261b;--mel:#d89a2b;--verde:#1f7a3a;--sombra:0 1px 2px #2417101f,0 4px 12px #2417101a;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:#1a120c}
+body{font-family:Archivo,system-ui,sans-serif;color:var(--tinta);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation}
+input,textarea{font:inherit;font-family:var(--mono);font-size:15px;width:100%;padding:10px;border:1px solid #2b2b2b;border-radius:2px;background:#fff;color:#2b2b2b}
+textarea{min-height:90px}
+.oculto{display:none!important}
+
+/* celular: tela toda · tablet: coluna no meio · PC (>=1000px): 3 colunas */
+.app{height:100%;max-width:560px;margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--kraft)}
+.app::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(130% 70% at 50% 0,#ffffff1c,#0000 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .19 0 0 0 0 .08 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* topo */
+header{position:relative;z-index:2;display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 16px 10px 20px}
+.selo{width:40px;height:40px;flex:none;border-radius:50%;border:1.5px solid var(--tinta);display:grid;place-items:center;font-family:"Special Elite";font-size:7px;line-height:1.05;text-align:center;opacity:.8;box-shadow:inset 0 0 0 2.5px var(--kraft),inset 0 0 0 3.5px var(--tinta);transform:rotate(-8deg)}
+header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.4px;flex:1;white-space:nowrap}
+header small{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;opacity:.7}
+.hb{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:1.2px;padding:8px 10px;border:1px solid #24171066;border-radius:2px}
+.hb:active{background:#2417100f}
+#btCfg{position:relative}
+.nuvem{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;border:1.5px solid var(--kraft);background:transparent}
+.nuvem.ok{background:var(--verde)}.nuvem.indo{background:var(--mel)}.nuvem.off{background:var(--verm)}
+#entrar .erro{color:var(--verm);font-size:11.5px;min-height:16px;margin-top:8px}
+
+/* páginas que deslizam (celular) */
+.paginas{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;position:relative;z-index:1;overscroll-behavior-x:contain}
+.paginas::-webkit-scrollbar{display:none}
+.pag{flex:0 0 100%;height:100%;overflow-y:auto;scroll-snap-align:start;scroll-snap-stop:always;overscroll-behavior-y:contain;scrollbar-width:none;padding:0 0 24px;contain:strict}
+.pag::-webkit-scrollbar{display:none}
+.coltit{display:none}
+
+/* ===== VENDER ===== */
+.vender{display:flex;flex-direction:column}
+.bilhete{margin:0 20px 10px;background:#fff3c4;padding:8px 10px;font-family:var(--mono);font-size:11px;line-height:1.45;box-shadow:var(--sombra);transform:rotate(-.4deg)}
+.bilhete a{color:var(--verm);font-weight:600}
+.busca{margin:0 20px 10px;width:auto;padding:8px 10px;font-size:13px;background:#fffcf6cc;border-color:#24171055}
+.tags{display:flex;gap:8px;overflow-x:auto;padding:4px 20px 14px;scrollbar-width:none;flex:none}
+.tags::-webkit-scrollbar{display:none}
+.tag{flex:none;background:var(--papel);font-family:var(--mono);font-size:12px;font-weight:500;padding:9px 12px 9px 22px;position:relative;clip-path:polygon(10px 0,100% 0,100% 100%,10px 100%,0 50%);transition:background .18s,color .18s;text-transform:uppercase}
+.tag::before{content:"";position:absolute;left:10px;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--kraft)}
+.tag.on{background:var(--tinta);color:var(--papel)}
+.tag small{color:var(--verm);font-weight:600}.tag.on small{color:#f4a597}
+.tag.novo{background:#fffcf680}
+.tags.chama{animation:chama .4s}
+@keyframes chama{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+.impressora{margin:0 16px;height:14px;flex:none;background:linear-gradient(#33241a,#140c07);border-radius:7px;position:relative;z-index:3;box-shadow:0 3px 6px #0006}
+.impressora::after{content:"";position:absolute;left:16px;right:16px;top:6px;height:2px;background:#000;border-radius:1px}
+.janela{margin:-7px 28px 0;overflow:hidden;padding-bottom:12px;flex:none}
+.cupom{background:var(--papel);padding:20px 18px 22px;font-family:var(--mono);font-size:12px;color:#2b2b2b;position:relative;will-change:transform}
+.cupom::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:7px;background:linear-gradient(135deg,var(--papel) 50%,transparent 50%) 0 0/10px 7px,linear-gradient(-135deg,var(--papel) 50%,transparent 50%) 0 0/10px 7px}
+.cupom.imprime{animation:imprime .55s cubic-bezier(.3,.7,.3,1) both}
+@keyframes imprime{from{transform:translateY(-100%)}}
+.cupom.sai{animation:sai .42s cubic-bezier(.6,0,.9,.5) forwards}
+@keyframes sai{to{transform:translate(120%,30px) rotate(10deg)}}
+.cupom h4{margin:0;text-align:center;font-weight:600;font-size:13px;letter-spacing:3px}
+.c{text-align:center;color:#8a8a8a;font-size:10px;letter-spacing:.6px;margin-top:2px}
+hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
+.l{display:flex;justify-content:space-between;gap:10px;line-height:1.8}
+.l .vazio{color:#a8a39b;font-weight:400}
+.tot{font-size:28px;font-weight:600;letter-spacing:-1px;line-height:1.3}
+.preco{border-bottom:1px dotted #8a8a8a;cursor:pointer}
+.qtd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.qtd button{font-family:var(--mono);font-weight:600;font-size:14px;padding:8px 0;border:1px solid #2b2b2b;border-radius:2px;transition:transform .08s,background .08s}
+.qtd button:active{transform:scale(.94);background:#2b2b2b0d}
+.carimbo{position:absolute;left:50%;top:46%;font-family:"Special Elite";font-size:24px;letter-spacing:2px;padding:5px 12px;border:3px double currentColor;border-radius:5px;transform:translate(-50%,-50%) rotate(-11deg) scale(1.8);opacity:0;pointer-events:none;white-space:nowrap}
+.carimbo.bate{animation:bate .24s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes bate{to{transform:translate(-50%,-50%) rotate(-11deg) scale(1);opacity:.82}}
+
+.bandeja{margin:auto 16px 4px;padding:10px;border-radius:14px;background:linear-gradient(#4a301a,#34210f);box-shadow:inset 0 2px 8px #000a,0 1px 0 #ffffff25;display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:none}
+.obj{height:70px;position:relative;text-align:left;box-shadow:0 2px 4px #0005;transition:transform .1s}
+.obj:active{transform:scale(.96)}
+.obj .rot{position:absolute;left:10px;bottom:8px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.4px}
+.o-pix{background:#121212;border-radius:12px;display:flex;align-items:center;gap:10px;padding:8px}
+.qr{width:50px;height:50px;background:#fff;padding:4px;display:grid;grid-template-columns:repeat(9,1fr);border-radius:4px;flex:none}
+.qr i{background:#111}.qr i.v{background:none}
+.o-pix .rot{position:static;color:#fff;font-size:12px;line-height:1.3}
+.o-pix .rot small{display:block;color:#5fd3b8;font-size:9px;font-weight:500}
+.o-din{background:repeating-radial-gradient(circle at 80% 50%,#d4e6ca 0 2px,#bfd8b1 2px 4px),#cbe0bf;color:#25461f;border-radius:3px;outline:1px solid #6f9a5e;outline-offset:-6px}
+.o-din b{position:absolute;left:12px;top:10px;font-family:var(--mono);font-weight:600;font-size:17px}
+.o-din::before{content:"R$";position:absolute;right:12px;top:15px;width:38px;height:38px;border-radius:50%;background:#e6f0df;border:1px solid #6f9a5e;font-family:var(--mono);font-weight:600;font-size:12px;line-height:38px;text-align:center}
+.o-car{border-radius:10px;background:linear-gradient(135deg,#3d4b5b,#1b232d 60%,#2d3a48);color:#e8edf2}
+.o-car::before{content:"";position:absolute;left:12px;top:14px;width:24px;height:18px;border-radius:4px;background:linear-gradient(135deg,#ecc874,#b58a32)}
+.o-car::after{content:"•••• 0000";position:absolute;right:12px;top:16px;font-family:var(--mono);font-size:10px;color:#9fb0c0;letter-spacing:1px}
+.o-fia{background:var(--papel);color:var(--verm);border-radius:2px}
+.o-fia::before{content:"";position:absolute;right:14px;top:12px;width:9px;height:9px;border-radius:50%;background:radial-gradient(#555 30%,#c9c9c9 36%)}
+.o-fia b{position:absolute;left:10px;top:12px;font-family:var(--mono);font-size:12px;font-weight:500;color:#2b2b2b}
+.dica-pc{display:none}
+
+.toast{position:absolute;left:50%;top:150px;transform:translate(-50%,-8px);background:var(--tinta);color:var(--papel);font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;white-space:nowrap;display:flex;gap:12px;align-items:center}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{color:var(--mel);font-weight:600;letter-spacing:1px;padding:10px 12px;margin:-10px -12px -10px 0}
+
+/* ===== ESPETO ===== */
+.cab{padding:6px 20px 16px}
+.cab small{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;font-weight:500;opacity:.75}
+.cab b{display:block;font-size:34px;font-weight:700;letter-spacing:-1px}
+.espeto{position:relative;padding:4px 20px 0}
+.haste{position:absolute;left:50%;top:-10px;bottom:0;width:3px;margin-left:-1.5px;background:linear-gradient(90deg,#777,#ddd,#777)}
+.nota{position:relative;background:var(--papel);padding:24px 16px 14px;margin-bottom:12px;font-family:var(--mono);font-size:12px;box-shadow:var(--sombra);contain:content}
+.nota:nth-child(odd){transform:rotate(-.6deg)}.nota:nth-child(even){transform:rotate(.5deg)}
+.nota::before{content:"";position:absolute;left:50%;top:9px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:radial-gradient(#555 30%,#cfcfcf 36%)}
+.nota .nm{font-family:Archivo;font-weight:700;font-size:15px}
+.nota .l{line-height:1.6;color:#6a6a6a}
+.nota .vl{font-size:20px;font-weight:600;color:var(--verm)}
+.velha{color:var(--verm);font-weight:600}
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.acoes button,.bt{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:1.2px;padding:9px 0;border:1px solid #2b2b2b;border-radius:2px;text-align:center}
+.acoes .zap,.bt.cheio{background:#2b2b2b;color:var(--papel)}
+.vazio-esp{margin:30px 20px;text-align:center;font-family:"Special Elite";font-size:18px;opacity:.7}
+
+/* ===== MÊS ===== */
+.maco{position:relative;height:96px;margin:6px 40px 18px}
+.maco i{position:absolute;left:0;right:0;height:62px;border-radius:2px;background:repeating-radial-gradient(circle at 80% 50%,#d4e6ca 0 2px,#bfd8b1 2px 4px),#cbe0bf;outline:1px solid #6f9a5e;outline-offset:-5px;box-shadow:0 2px 4px #0003}
+.maco i:nth-child(1){top:0;transform:rotate(-3deg)}.maco i:nth-child(2){top:8px;transform:rotate(2deg)}.maco i:nth-child(3){top:16px}
+.cinta{position:absolute;left:50%;top:14px;width:136px;margin-left:-68px;height:72px;background:#f3e4c6;text-align:center;padding-top:13px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;font-weight:600;box-shadow:0 1px 3px #0003}
+.cinta b{display:block;font-family:Archivo;font-size:21px;letter-spacing:-.5px;font-weight:700}
+.mes .janela{margin-top:0}
+.barcode{display:flex;align-items:flex-end;gap:2px;height:72px;margin:8px 0 2px}
+.barcode i{flex:1;background:#2b2b2b;min-height:2px}.barcode i.h{background:var(--verm)}
+.assin{margin-top:12px;text-align:center;font-size:10px;color:#8a8a8a}
+.ok{display:inline-block;font-family:"Special Elite";color:var(--verde);border:1.5px solid var(--verde);padding:0 6px;transform:rotate(-4deg)}
+.ok.ruim{color:var(--verm);border-color:var(--verm)}
+.miuda{font-size:10px;color:#8a8a8a;line-height:1.5;margin-top:8px}
+
+/* barra de baixo (só celular) */
+nav{position:relative;z-index:2;display:flex;background:var(--tinta);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:13px 0 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;color:#a8917a;transition:color .2s}
+nav button.on{color:var(--papel)}
+.marcador{position:absolute;top:0;left:0;width:25%;height:2px;background:var(--mel);will-change:transform}
+
+/* janelas (cliente, receber, WhatsApp) e folhas (clientes, configurar) */
+dialog{border:0;padding:20px 18px;background:var(--papel);color:#2b2b2b;font-family:var(--mono);font-size:13px;width:min(92vw,440px);box-shadow:0 20px 60px #000a;border-radius:2px}
+dialog::backdrop{background:#1a120cb0}
+dialog h3{margin:0 0 12px;font-family:Archivo;font-size:20px;letter-spacing:-.3px}
+dialog label{display:block;margin:12px 0 4px;font-size:10.5px;letter-spacing:1.3px;font-weight:600}
+dialog .linha{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+dialog .linha.tres{grid-template-columns:1fr 1fr 1fr}
+.peq{font-size:11px;color:#8a8a8a;line-height:1.5}
+dialog.folha{width:min(100vw,560px);max-width:none;height:100%;max-height:100%;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 24px;border-radius:0;background:var(--kraft);overflow-y:auto}
+.folha .fechar{float:right}
+.ficha{background:var(--papel);padding:14px;margin-top:10px;box-shadow:var(--sombra)}
+.ficha .l{line-height:1.5}
+/* WhatsApp: conversas */
+.hb{position:relative}
+.selo-n{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--verm);color:var(--papel);font:600 10px/17px var(--mono);font-style:normal;text-align:center}
+.conv{display:flex;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit}
+.conv .nm{display:flex;justify-content:space-between;gap:8px}.conv .nm b{font-family:Archivo;font-size:15px}.conv .nm small{font-size:10.5px;color:#8a8a8a;white-space:nowrap}
+.conv .ult{font-size:12px;color:#6b6b6b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.conv .selo-n{position:static;flex:none}
+.chat{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.bal{max-width:86%;align-self:flex-start;background:var(--papel);padding:9px 11px;box-shadow:var(--sombra);font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.bal.enviada{align-self:flex-end;background:#f4ead8}
+.bal time{display:block;font-size:10px;color:#8a8a8a;margin-top:3px}
+.sug{margin-top:9px;padding-top:9px;border-top:1px dashed #24171059;white-space:normal}
+.sug .acoes{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.sug .acoes button{font-size:10px;letter-spacing:.6px}
+
+@media(min-width:1000px){
+  .app{max-width:none}
+  header{padding:16px 28px 8px}
+  #titulo{display:none}
+  .marca{flex:1;font-family:"Special Elite";font-size:20px}
+  .paginas{display:grid;grid-template-columns:minmax(400px,1.15fr) 1fr 1fr;gap:28px;padding:0 28px;overflow:hidden;scroll-snap-type:none}
+  .pag{height:100%;padding-bottom:28px}
+  .vender{overflow-y:auto}
+  .coltit{display:block;font-family:var(--mono);font-size:11px;letter-spacing:2px;font-weight:600;opacity:.65;padding:12px 20px 8px;margin:0}
+  .tags{flex-wrap:wrap;overflow:visible}
+  .bandeja{margin-top:18px}
+  .dica-pc{display:block;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.8px;opacity:.6;margin-top:8px}
+  .cab{padding-top:0}
+  nav{display:none}
+  .toast{top:90px}
+  dialog.folha{width:600px;height:auto;max-height:90vh;margin:auto;border-radius:2px}
+}
+@media(max-width:999px){.marca{display:none}}
+@media(max-width:999px){#btZap{display:none}}   /* celular: o WhatsApp fica embaixo, do lado do MÊS */
+.icozap{display:block;width:20px;height:20px}
+#btZap{padding:5px 9px}
+nav .zapnav{position:relative;display:flex;justify-content:center;align-items:center;padding:10px 0 13px}
+nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="selo">PÃO<br>DE MEL<br>DA VÓ</div>
+    <h1 id="titulo">Vender</h1><span class="marca">Pão de Mel da Vó</span>
+    <small id="data"></small>
+    <button class="hb" id="btZap" aria-label="WhatsApp do aplicativo" title="WhatsApp do aplicativo"><svg class="icozap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.6 20.4l1.2-4.1A8.6 8.6 0 1 1 7.9 19.3z"/><path fill="currentColor" stroke="none" d="M9.1 7.9c.3-.6.8-.6 1.1 0l.6 1.4c.1.3 0 .6-.2.8l-.5.5c.5 1 1.3 1.8 2.3 2.3l.5-.5c.2-.2.5-.3.8-.2l1.4.6c.6.3.6.8 0 1.1-.9.6-2 .7-3 .2a8 8 0 0 1-3.2-3.2c-.5-1-.4-2.1.2-3z"/></svg><i class="selo-n oculto" id="zapN"></i></button><button class="hb" id="btCli">CLIENTES</button><button class="hb" id="btCfg" aria-label="Configurar">⚙<i class="nuvem" id="nuvem"></i></button>
+  </header>
+
+  <div class="paginas" id="paginas">
+    <section class="pag vender">
+      <h2 class="coltit">VENDER</h2>
+      <div id="avisos"></div>
+      <input class="busca oculto" id="busca" placeholder="procurar cliente…" autocomplete="off">
+      <div class="tags" id="tags"></div>
+      <div class="impressora"></div>
+      <div class="janela"><div class="cupom" id="cupom">
+        <h4>PÃO DE MEL DA VÓ</h4>
+        <div class="c">CUPOM Nº <span id="numc"></span> · <span id="datac"></span></div>
+        <hr>
+        <div class="l"><span>CLIENTE</span><b id="cli"></b></div>
+        <div class="l"><span>PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
+        <hr>
+        <div class="l tot"><span>TOTAL</span><span id="t"></span></div>
+        <div class="qtd"><button data-d="-1">−1</button><button data-d="1">+1</button><button data-d="5">+5</button><button data-d="10">+10</button></div>
+        <div class="carimbo" id="carimbo">PAGO</div>
+      </div></div>
+      <div class="bandeja">
+        <button class="obj o-pix" data-f="pix"><div class="qr" id="qr"></div><span class="rot">PIX<small>recebi no Pix</small></span></button>
+        <button class="obj o-din" data-f="dinheiro"><b id="din"></b><span class="rot">DINHEIRO</span></button>
+        <button class="obj o-car" data-f="cartao"><span class="rot">CARTÃO</span></button>
+        <button class="obj o-fia" data-f="fiado"><b>pra depois</b><span class="rot">FIADO</span></button>
+      </div>
+      <div class="dica-pc">teclado: + − quantidade · P pix · D dinheiro · C cartão · F fiado</div>
+    </section>
+
+    <section class="pag">
+      <h2 class="coltit">ESPETO · QUEM DEVE</h2>
+      <div id="espeto"></div>
+    </section>
+
+    <section class="pag mes">
+      <h2 class="coltit">MÊS</h2>
+      <div id="mes"></div>
+    </section>
+  </div>
+
+  <nav id="nav"><div class="marcador" id="marcador"></div><button class="on">VENDER</button><button>ESPETO</button><button>MÊS</button><button class="zapnav" id="navZap" aria-label="WhatsApp do aplicativo"><svg class="icozap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.6 20.4l1.2-4.1A8.6 8.6 0 1 1 7.9 19.3z"/><path fill="currentColor" stroke="none" d="M9.1 7.9c.3-.6.8-.6 1.1 0l.6 1.4c.1.3 0 .6-.2.8l-.5.5c.5 1 1.3 1.8 2.3 2.3l.5-.5c.2-.2.5-.3.8-.2l1.4.6c.6.3.6.8 0 1.1-.9.6-2 .7-3 .2a8 8 0 0 1-3.2-3.2c-.5-1-.4-2.1.2-3z"/></svg><i class="selo-n oculto" id="zapN2"></i></button></nav>
+  <div class="toast" id="toast"><span id="toastTx"></span><button id="toastBt" class="oculto">DESFAZER</button></div>
+</div>
+<dialog id="dlg"></dialog>
+<dialog id="folha" class="folha"></dialog>
+<dialog id="entrar">
+  <h3>Entrar</h3>
+  <div class="peq">Seus clientes e vendas ficam na sua conta. O mesmo login no PC e no celular mostra os mesmos dados.</div>
+  <form id="fEntrar">
+    <label>E-MAIL</label><input id="eEmail" type="email" autocomplete="username" required>
+    <label>SENHA</label><input id="eSenha" type="password" autocomplete="current-password" required>
+    <div class="erro" id="eErro"></div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="eBt">ENTRAR</button></div>
+  </form>
+</dialog>
+
+<script>
+'use strict';
+// ===== Dados (mesma chave do app antigo: nada se perde) =====
+const CHAVE = 'paodemel_v1';
+const PADRAO = {
+  clientes: [],     // {id, nome, tel}
+  vendas: [],       // {id, data, cli, qtd, preco, forma:'pix'|'dinheiro'|'cartao'|'fiado'}
+  pagamentos: [],   // {id, data, cli, valor, forma}  (pagamento de fiado)
+  cfg: {
+    preco: 12.5, custo: 3.34, chavePix: '', recebedor: '', ultimoBackup: null,
+    msgCobrar: 'Oi {nome}! Tudo bem? Passando pra lembrar do pão de mel que ficou pendente: R$ {valor}. Pode pagar no Pix: {pix}. Obrigado!',
+    msgOferta: 'Oi {nome}! Tudo bem? Chegou novidade: {produto}. Quer que eu separe pra você?',
+    produtoNovo: '',
+    diasCobrar: 7,      // fiado com X dias ou mais entra no "COBRAR HOJE"
+    intervalo: 3,       // depois de cobrar (ou pular), volta pra fila só depois de X dias
+    cobrados: {}        // {idCliente: data da última cobrança} (vai pra nuvem junto com a config)
+  }
+};
+let D = carregar();
+function carregar(){
+  try{ const t = JSON.parse(localStorage.getItem(CHAVE)); if(t){ t.cfg = Object.assign({}, PADRAO.cfg, t.cfg); t.pagamentos ||= []; return t; } }catch(e){}
+  return JSON.parse(JSON.stringify(PADRAO));
+}
+function salvar(){ localStorage.setItem(CHAVE, JSON.stringify(D)); if(typeof agendaNuvem==='function') agendaNuvem(); }
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist();
+
+// ===== Utilidades =====
+const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+const id = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const v2 = v => (Math.round(v*100)/100).toFixed(2).replace('.', ',');
+const R = v => 'R$ ' + v2(v);
+const Rmil = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hoje = () => new Date().toISOString();
+const mesLocal = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+const mesDe = iso => mesLocal(new Date(iso));
+const dataBR = iso => new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+const dias = iso => Math.floor((Date.now() - new Date(iso)) / 864e5);
+const cliPor = cid => D.clientes.find(c => c.id === cid) || {nome:'(apagado)', tel:''};
+const num = s => parseFloat(String(s).replace(/\./g,'').replace(',', '.')) || 0;
+const NOME_F = {pix:'PIX', dinheiro:'DINHEIRO', cartao:'CARTÃO', fiado:'FIADO'};
+const COR_F = {pix:'#0f8a74', dinheiro:'#1f7a3a', cartao:'#1d4fa8', fiado:'#a8261b'};
+
+let toastT;
+function toast(t, desfazer){
+  $('#toastTx').textContent = t; const b = $('#toastBt');
+  b.classList.toggle('oculto', !desfazer); b.onclick = () => { desfazer(); $('#toast').classList.remove('on'); };
+  $('#toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(()=>$('#toast').classList.remove('on'), desfazer ? 5000 : 2200);
+}
+
+function telLimpo(t){ let d = String(t||'').replace(/\D/g,''); if(d.startsWith('0')) d = d.replace(/^0+/,''); if(d.length===10||d.length===11) d = '55'+d; return d; }
+function telBonito(d){ const m = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : d; }
+
+// ===== Fiado: pagamentos quitam primeiro as vendas mais antigas =====
+function fiados(){
+  const porCli = {};
+  D.vendas.filter(v=>v.forma==='fiado').sort((a,b)=>a.data<b.data?-1:1).forEach(v=>{ (porCli[v.cli] ||= []).push({v, falta: v.qtd*v.preco}); });
+  D.pagamentos.slice().sort((a,b)=>a.data<b.data?-1:1).forEach(p=>{
+    let resto = p.valor;
+    for(const f of (porCli[p.cli]||[])){ if(resto<=0) break; const tira=Math.min(resto,f.falta); f.falta-=tira; resto-=tira; }
+  });
+  return porCli;
+}
+function devedores(){
+  const pc = fiados(), lista = [];
+  for(const cid in pc){
+    const abertas = pc[cid].filter(f=>f.falta>0.004);
+    if(!abertas.length) continue;
+    lista.push({cli:cliPor(cid), cid, total:abertas.reduce((s,f)=>s+f.falta,0), qtd:abertas.reduce((s,f)=>s+f.v.qtd,0), maisAntiga:abertas[0].v.data});
+  }
+  return lista.sort((a,b)=>dias(b.maisAntiga)-dias(a.maisAntiga) || b.total-a.total);
+}
+const deve = cid => (devedores().find(d=>d.cid===cid)||{total:0}).total;
+
+// ===== Navegação (celular: deslizar; PC: 3 colunas) =====
+const pags = $('#paginas'), botoes = $$('nav button:not(.zapnav)'), titulos = ['Vender','Espeto','Mês'];
+let atual = 0, quadro = 0;
+pags.addEventListener('scroll',()=>{ if(quadro) return; quadro=requestAnimationFrame(()=>{ quadro=0;
+  const p = pags.scrollLeft/pags.clientWidth; $('#marcador').style.transform=`translateX(${p*100}%)`;
+  const i = Math.round(p); if(i!==atual){ atual=i; botoes.forEach((b,k)=>b.classList.toggle('on',k===i)); $('#titulo').textContent=titulos[i]; }
+});},{passive:true});
+botoes.forEach((b,i)=>b.onclick=()=>pags.scrollTo({left:i*pags.clientWidth,behavior:'smooth'}));
+const irPara = i => { if(innerWidth<1000) pags.scrollTo({left:i*pags.clientWidth,behavior:'smooth'}); };
+
+// ===== VENDER =====
+let sel = null, q = 1, preco = D.cfg.preco, ocupado = false;
+function pintaAvisos(){
+  let h = '';
+  if(!D.cfg.chavePix) h += `<div class="bilhete">Falta sua chave Pix pro botão COBRAR. <a href="#" data-cfg>Pôr agora</a></div>`;
+  const u = D.cfg.ultimoBackup;
+  if(!usuario && D.vendas.length && (!u || dias(u) >= 7)) h += `<div class="bilhete">Faz ${u? dias(u)+' dias':'tempo'} sem backup. Se o Chrome for limpo, as vendas somem. <a href="#" data-cfg>Fazer backup</a></div>`;
+  const fila = filaCobrar();
+  if(fila.length) h += `<div class="bilhete">COBRAR HOJE: <b>${fila.length} pessoa${fila.length===1?'':'s'}</b> · ${R(fila.reduce((s,d)=>s+d.total,0))} (fiado com ${D.cfg.diasCobrar}+ dias). <a href="#" data-fila>Começar</a></div>`;
+  const semTel = devedores().filter(d => !d.cli.tel && D.clientes.some(c=>c.id===d.cid) && dias(d.maisAntiga) >= D.cfg.diasCobrar);
+  if(semTel.length) h += `<div class="bilhete">Devendo e <b>sem WhatsApp</b> (fora do COBRAR HOJE): ${semTel.map(d=>esc(d.cli.nome)).join(', ')}. <a href="#" data-cli>Pôr o número</a></div>`;
+  $('#avisos').innerHTML = h;
+  $$('#avisos [data-cfg]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaConfig();});
+  $$('#avisos [data-cli]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaClientes();});
+  $$('#avisos [data-fila]').forEach(a=>a.onclick=e=>{e.preventDefault(); cobrarFila();});
+}
+function pintaTags(){
+  const freq = {}; D.vendas.forEach(v=>freq[v.cli]=(freq[v.cli]||0)+1);
+  const dv = {}; devedores().forEach(d=>dv[d.cid]=d.total);
+  const lista = D.clientes.slice().sort((a,b)=>(freq[b.id]||0)-(freq[a.id]||0) || a.nome.localeCompare(b.nome));
+  const filtro = $('#busca').value.trim().toLowerCase();
+  $('#busca').classList.toggle('oculto', D.clientes.length <= 8);
+  $('#tags').innerHTML = lista.filter(c=>!filtro || c.nome.toLowerCase().includes(filtro)).map(c=>
+    `<button class="tag${c.id===sel?' on':''}" data-id="${c.id}">${esc(c.nome)}${dv[c.id]?` <small>−${Math.round(dv[c.id])}</small>`:''}</button>`).join('')
+    + `<button class="tag novo" id="tagNovo">+ NOVO</button>`;
+  $$('#tags .tag[data-id]').forEach(b=>b.onclick=()=>{ sel=b.dataset.id; pintaTags(); desenha(); });
+  $('#tagNovo').onclick=()=>novoCliente(true);
+}
+$('#busca').oninput = pintaTags;
+function desenha(){
+  const t = v2(q*preco);
+  $('#q').textContent=q; $('#t').textContent=t; $('#din').textContent=t; $('#preco').textContent=v2(preco);
+  $('#cli').innerHTML = sel ? esc(cliPor(sel).nome.toUpperCase()) : '<span class="vazio">escolha acima</span>';
+  $('#numc').textContent = String(D.vendas.length+1).padStart(4,'0');
+  $('#datac').textContent = new Date().toLocaleDateString('pt-BR');
+}
+$$('.qtd button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
+$('#preco').onclick=()=>{ const p=prompt('Preço de cada pão nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); desenha(); } };
+$$('.bandeja .obj').forEach(b=>b.onclick=()=>vender(b.dataset.f));
+
+function vender(f){
+  if(ocupado) return;
+  if(!sel){ const t=$('#tags'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); return toast('escolha o cliente primeiro'); }
+  ocupado = true;
+  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
+  D.vendas.push(venda); salvar();
+  const c=$('#carimbo'), cp=$('#cupom');
+  c.textContent = f==='fiado' ? 'FIADO' : 'PAGO · '+NOME_F[f]; c.style.color = COR_F[f];
+  c.classList.remove('bate'); void c.offsetWidth; c.classList.add('bate');
+  if(navigator.vibrate) navigator.vibrate(18);
+  setTimeout(()=>{ cp.classList.add('sai');
+    toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(q*preco)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==venda.id); salvar(); tudo(); toast('venda desfeita'); });
+  },520);
+  setTimeout(()=>{ c.classList.remove('bate'); cp.classList.remove('sai','imprime'); void cp.offsetWidth;
+    q=1; preco=D.cfg.preco; tudo(); cp.classList.add('imprime'); ocupado=false; },980);
+}
+
+// ===== ESPETO =====
+function pintaEspeto(){
+  const ds = devedores(), total = ds.reduce((s,d)=>s+d.total,0);
+  $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${ds.length} NOTA${ds.length===1?'':'S'}</small><b>${R(total)}</b></div>`
+   + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga); return `
+    <div class="nota"><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
+      <div class="l"><span>${d.qtd} un · há ${n} dia${n===1?'':'s'}</span><span class="velha">${n>=30?'RISCO DE CALOTE':n>7?'COBRAR JÁ':''}</span></div>
+      <div class="l"><span>desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''}</span><span class="vl">${R(d.total)}</span></div>
+      <div class="acoes"><button class="zap" data-cobrar="${d.cid}">COBRAR</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
+   : `<div class="vazio-esp">Espeto vazio.<br>Ninguém devendo.</div>`);
+  $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
+  $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
+}
+
+// ===== MÊS =====
+function resumoMes(m){
+  const vs = D.vendas.filter(v=>mesDe(v.data)===m), pc = fiados();
+  let vendido=0, paes=0, furoAberto=0; const porForma={pix:0,dinheiro:0,cartao:0,fiado:0};
+  vs.forEach(v=>{ const t=v.qtd*v.preco; vendido+=t; paes+=v.qtd; porForma[v.forma]=(porForma[v.forma]||0)+t; });
+  for(const cid in pc) pc[cid].forEach(f=>{ if(mesDe(f.v.data)===m) furoAberto+=f.falta; });
+  const recebFiado = D.pagamentos.filter(p=>mesDe(p.data)===m).reduce((s,p)=>s+p.valor,0);
+  const custo = paes*D.cfg.custo, lucro = vendido - furoAberto - custo;
+  return {vs, vendido, paes, porForma, furoAberto, recebFiado, custo, lucro, pctFuro: vendido? furoAberto/vendido*100 : 0};
+}
+function pintaMes(){
+  const agora = new Date(), m = mesLocal(agora), ant = mesLocal(new Date(agora.getFullYear(), agora.getMonth()-1, 15));
+  const a = resumoMes(m), b = resumoMes(ant);
+  const dia = agora.getDate(), diasMes = new Date(agora.getFullYear(), agora.getMonth()+1, 0).getDate();
+  const proj = a.vendido/dia*diasMes, projP = a.paes/dia*diasMes, projLucro = proj*(1-a.pctFuro/100) - projP*D.cfg.custo;
+  const nomeM = s => new Date(s+'-15T12:00').toLocaleDateString('pt-BR',{month:'long'});
+  const abrev = s => nomeM(s).slice(0,3).toUpperCase();
+  const vs = b.lucro ? (a.lucro-b.lucro)/Math.abs(b.lucro)*100 : null;
+  const porDia = Array(dia).fill(0); a.vs.forEach(v=>{ porDia[new Date(v.data).getDate()-1]+=v.qtd*v.preco; });
+  const max = Math.max(...porDia, 1);
+  $('#mes').innerHTML = `
+    <div class="maco"><i></i><i></i><i></i><div class="cinta">SOBROU<b>${Rmil(a.lucro)}</b>${vs===null?'ESTIMADO':`${vs>=0?'+':''}${vs.toFixed(0)}% VS ${abrev(ant)}`}</div></div>
+    <div class="janela"><div class="cupom">
+      <h4>FECHAMENTO</h4>
+      <div class="c">${nomeM(m).toUpperCase()}/${agora.getFullYear()} · ATÉ DIA ${dia}</div>
+      <hr>
+      <div class="l"><span>PÃES VENDIDOS</span><span>${a.paes} un</span></div>
+      <div class="l"><span>FATURADO</span><b>${v2(a.vendido)}</b></div>
+      ${['pix','dinheiro','cartao','fiado'].filter(f=>a.porForma[f]).map(f=>`<div class="l" style="color:#8a8a8a"><span>· ${NOME_F[f]}</span><span>${v2(a.porForma[f])}</span></div>`).join('')}
+      <div class="l"><span>(−) FIADO NÃO PAGO</span><span>${v2(a.furoAberto)}</span></div>
+      <div class="l"><span>(−) CUSTO EST.</span><span>${v2(a.custo)}</span></div>
+      <hr>
+      <div class="l tot"><span>LUCRO</span><span>${v2(a.lucro)}</span></div>
+      ${vs!==null?`<div class="l"><span>VS ${nomeM(ant).toUpperCase()}</span><span class="ok${vs<0?' ruim':''}">${vs>=0?'+':''}${vs.toFixed(1).replace('.',',')}%</span></div>`:''}
+      <div class="l" style="color:var(--verm)"><span>FURO DO MÊS</span><b>${a.pctFuro.toFixed(1).replace('.',',')}%</b></div>
+      <div class="l"><span>RECEBIDO DE FIADO</span><span>${v2(a.recebFiado)}</span></div>
+      <hr>
+      <div class="l"><span>SE SEGUIR ASSIM</span><b>${v2(proj)}</b></div>
+      <div class="l"><span>LUCRO PROJETADO</span><b>${v2(projLucro)}</b></div>
+      ${dia<5?'<div class="miuda">Começo do mês: projeção ainda fraca.</div>':''}
+      <hr>
+      <div class="c">VENDAS POR DIA</div>
+      <div class="barcode">${porDia.map((v,i)=>`<i class="${i===dia-1?'h':''}" style="height:${(v/max*100).toFixed(0)}%" title="dia ${i+1}: ${R(v)}"></i>`).join('')}</div>
+      <div class="c">01 ················· ${String(dia).padStart(2,'0')}</div>
+      ${b.vendido?`<hr><div class="c">${nomeM(ant).toUpperCase()} INTEIRO</div>
+      <div class="l"><span>FATURADO</span><span>${v2(b.vendido)}</span></div>
+      <div class="l"><span>LUCRO</span><span>${v2(b.lucro)}</span></div>`:''}
+      <div class="miuda">Lucro estimado: custo fixo de ${R(D.cfg.custo)} por pão (ingredientes, embalagem, avó, gás/luz). O exato vem com o extrato do banco.</div>
+    </div></div>`;
+}
+
+// ===== Cliente novo / editar =====
+function novoCliente(vendeDepois, editar){
+  const c = editar ? cliPor(editar) : {nome:'', tel:''}, dlg = $('#dlg');
+  dlg.innerHTML = `<h3>${editar?'Editar':'Novo'} cliente</h3>
+    <label>NOME</label><input id="cn" value="${esc(c.nome)}" autocomplete="off">
+    <label>WHATSAPP (COM DDD)</label><input id="ct" type="tel" inputmode="tel" placeholder="41 99999-9999" value="${c.tel?esc(telBonito(c.tel)):''}">
+    <div class="linha"><button class="bt" id="cx">CANCELAR</button><button class="bt cheio" id="cs">SALVAR</button></div>
+    ${editar?'<div class="linha" style="grid-template-columns:1fr"><button class="bt" style="color:var(--verm);border-color:var(--verm)" id="capaga">APAGAR CLIENTE</button></div>':''}`;
+  $('#cx').onclick=()=>dlg.close();
+  $('#cs').onclick=()=>{
+    const nome = $('#cn').value.trim(); if(!nome) return toast('falta o nome');
+    const tel = telLimpo($('#ct').value);
+    if($('#ct').value.trim() && !/^55\d{10,11}$/.test(tel)) return toast('telefone estranho: use DDD + número');
+    if(editar) Object.assign(cliPor(editar), {nome, tel});
+    else { const n={id:id(), nome, tel}; D.clientes.push(n); if(vendeDepois) sel=n.id; }
+    salvar(); dlg.close(); tudo(); if($('#folha').open) telaClientes();
+  };
+  if(editar) $('#capaga').onclick=()=>{
+    if(deve(editar)>0) return toast('ainda deve: receba antes de apagar');
+    if(confirm('Apagar '+c.nome+'? As vendas antigas continuam no histórico.')){ D.clientes=D.clientes.filter(x=>x.id!==editar); if(sel===editar) sel=null; salvar(); dlg.close(); tudo(); telaClientes(); }
+  };
+  dlg.showModal(); $('#cn').focus();
+}
+
+// ===== Cobrar / receber / oferecer =====
+function preencher(txt, c, extra){
+  return txt.replace(/\{nome\}/g, c.nome.split(' ')[0]).replace(/\{valor\}/g, extra.valor||'').replace(/\{qtd\}/g, extra.qtd||'')
+    .replace(/\{pix\}/g, D.cfg.chavePix + (D.cfg.recebedor?` (${D.cfg.recebedor})`:'')).replace(/\{produto\}/g, D.cfg.produtoNovo||'');
+}
+// PC: abre direto no WhatsApp Web (sempre na MESMA aba, não enche de abas). Celular: app do WhatsApp.
+const ehCelular = () => /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+function linkWhats(tel, texto){
+  return (ehCelular() ? 'https://wa.me/'+tel+'?text=' : 'https://web.whatsapp.com/send?phone='+tel+'&text=') + encodeURIComponent(texto);
+}
+const abreLink = (tel, texto) => window.open(linkWhats(tel, texto), ehCelular() ? '_blank' : 'whatsweb');
+function abrirWhats(c, texto, depois){
+  if(!c.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<h3>Mandar pra ${esc(c.nome)}</h3>
+    <div class="peq">Número: <b>${telBonito(c.tel)}</b> — confira antes.</div>
+    <label>MENSAGEM (PODE MUDAR)</label><textarea id="tx">${esc(texto)}</textarea>
+    <div class="linha"><button class="bt" id="wx">CANCELAR</button><button class="bt cheio" id="wa">ABRIR ${ehCelular()?'WHATSAPP':'WHATSAPP WEB'}</button></div>
+    <p class="peq">O WhatsApp abre com a mensagem pronta. Quem aperta enviar é você.</p>`;
+  $('#wx').onclick=()=>dlg.close();
+  $('#wa').onclick=()=>{ abreLink(c.tel, $('#tx').value); dlg.close(); if(depois) depois(); };
+  dlg.showModal();
+}
+function cobrar(cid){
+  if(!D.cfg.chavePix){ toast('coloque a chave Pix no ⚙ primeiro'); return telaConfig(); }
+  const d = devedores().find(x=>x.cid===cid);
+  abrirWhats(d.cli, preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd}), ()=>marcaCobrado(cid));
+}
+function marcaCobrado(cid){ D.cfg.cobrados = {...D.cfg.cobrados, [cid]: hoje()}; salvar(); tudo(); }
+// Fila do dia: fiado com diasCobrar+ dias, com WhatsApp, e que não foi cobrado (nem pulado) nos últimos "intervalo" dias.
+function filaCobrar(){
+  const c = D.cfg;
+  return devedores().filter(d => d.cli.tel && dias(d.maisAntiga) >= c.diasCobrar && !(c.cobrados[d.cid] && dias(c.cobrados[d.cid]) < c.intervalo));
+}
+function cobrarFila(){
+  if(!D.cfg.chavePix){ toast('coloque a chave Pix no ⚙ primeiro'); return telaConfig(); }
+  const fila = filaCobrar(), dlg = $('#dlg');
+  if(!fila.length){ if(dlg.open) dlg.close(); return toast('pronto: ninguém mais pra cobrar hoje'); }
+  const d = fila[0], n = dias(d.maisAntiga), txt = preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd});
+  dlg.innerHTML = `<h3>Cobrar hoje · faltam ${fila.length}</h3>
+    <div class="peq"><b>${esc(d.cli.nome)}</b> · ${telBonito(d.cli.tel)} · ${R(d.total)} · há ${n} dia${n===1?'':'s'}${D.cfg.cobrados[d.cid]?` · última cobrança há ${dias(D.cfg.cobrados[d.cid])}d`:''}</div>
+    <label>MENSAGEM (PODE MUDAR)</label><textarea id="tx">${esc(txt)}</textarea>
+    <div class="linha tres"><button class="bt" id="fx">PARAR</button><button class="bt" id="fp">PULAR</button><button class="bt cheio" id="fa">ABRIR ${ehCelular()?'WHATSAPP':'WHATS WEB'}</button></div>
+    <p class="peq">Abre com a mensagem pronta; quem aperta enviar é você. Depois volte aqui pro próximo. PULAR = não cobrar essa pessoa por ${D.cfg.intervalo} dia${D.cfg.intervalo===1?'':'s'}.</p>`;
+  $('#fx').onclick=()=>dlg.close();
+  $('#fp').onclick=()=>{ marcaCobrado(d.cid); cobrarFila(); };
+  $('#fa').onclick=()=>{ abreLink(d.cli.tel, $('#tx').value); marcaCobrado(d.cid); cobrarFila(); };
+  if(!dlg.open) dlg.showModal();
+}
+function receber(cid){
+  const t = deve(cid), c = cliPor(cid), dlg = $('#dlg');
+  dlg.innerHTML = `<h3>${esc(c.nome)} pagou</h3>
+    <label>QUANTO (DEVE ${R(t)})</label><input id="rv" inputmode="decimal" value="${v2(t)}">
+    <div class="linha tres"><button class="bt cheio" data-f="pix">PIX</button><button class="bt cheio" data-f="dinheiro">DINHEIRO</button><button class="bt cheio" data-f="cartao">CARTÃO</button></div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="rx">VOLTAR</button></div>`;
+  dlg.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{
+    const v = Math.min(num($('#rv').value), t); if(v<=0) return toast('valor inválido');
+    D.pagamentos.push({id:id(), data:hoje(), cli:cid, valor:v, forma:b.dataset.f}); salvar(); dlg.close();
+    toast('recebido '+R(v)); tudo();
+  });
+  $('#rx').onclick=()=>dlg.close();
+  dlg.showModal();
+}
+function oferecer(cid){
+  if(!D.cfg.produtoNovo.trim()) return toast('escreva a novidade no campo de cima');
+  const c = cliPor(cid); abrirWhats(c, preencher(D.cfg.msgOferta, c, {}));
+}
+
+// ===== Folha: Clientes =====
+function telaClientes(){
+  const dv = {}; devedores().forEach(d=>dv[d.cid]=d.total);
+  const lista = D.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)), f = $('#folha');
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Clientes (${lista.length})</h3>
+    <div class="ficha"><label style="margin-top:0">NOVIDADE PRA OFERECER (VAI NA MENSAGEM)</label>
+    <input id="pn" value="${esc(D.cfg.produtoNovo)}" placeholder="ex.: kit de Natal com 6 pães de mel">
+    <div class="peq" style="margin-top:6px">OFERECER aparece só pra quem está em dia.</div></div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="fn">+ CLIENTE NOVO</button></div>
+    ${lista.map(c=>`<div class="ficha"><div class="l"><b style="font-family:Archivo;font-size:15px">${esc(c.nome)}</b>${dv[c.id]?`<b style="color:var(--verm)">deve ${R(dv[c.id])}</b>`:'<span class="ok">em dia</span>'}</div>
+      <div class="peq">${c.tel?telBonito(c.tel):'sem WhatsApp'}</div>
+      <div class="acoes"><button data-ed="${c.id}">EDITAR</button>${dv[c.id]?`<button class="zap" data-cob="${c.id}">COBRAR</button>`:`<button class="zap" data-of="${c.id}">OFERECER</button>`}</div></div>`).join('')}`;
+  $('#fx').onclick=()=>f.close();
+  $('#pn').onchange=e=>{ D.cfg.produtoNovo=e.target.value; salvar(); };
+  $('#fn').onclick=()=>novoCliente(false);
+  f.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>novoCliente(false,b.dataset.ed));
+  f.querySelectorAll('[data-cob]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cob));
+  f.querySelectorAll('[data-of]').forEach(b=>b.onclick=()=>oferecer(b.dataset.of));
+  if(!f.open) f.showModal();
+}
+
+// ===== Folha: Configurar + backup =====
+function telaConfig(){
+  const c = D.cfg, f = $('#folha');
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Configurar</h3>
+    <div class="ficha">
+    <label style="margin-top:0">SUA CHAVE PIX</label><input id="k1" value="${esc(c.chavePix)}" placeholder="celular, e-mail ou chave aleatória">
+    <label>NOME QUE APARECE NO PIX</label><input id="k2" value="${esc(c.recebedor)}" placeholder="pra pessoa conferir antes de pagar">
+    <div class="linha" style="margin-top:0"><div><label>PREÇO DO PÃO</label><input id="k3" inputmode="decimal" value="${v2(c.preco)}"></div>
+    <div><label>CUSTO POR PÃO</label><input id="k4" inputmode="decimal" value="${v2(c.custo)}"></div></div>
+    <label>MENSAGEM DE COBRANÇA</label><textarea id="k5">${esc(c.msgCobrar)}</textarea>
+    <div class="peq">{nome} {valor} {qtd} {pix} são trocados sozinhos.</div>
+    <div class="linha" style="margin-top:0"><div><label>COBRAR FIADO COM (DIAS)</label><input id="k7" inputmode="numeric" value="${c.diasCobrar}"></div>
+    <div><label>COBRAR DE NOVO DEPOIS DE (DIAS)</label><input id="k8" inputmode="numeric" value="${c.intervalo}"></div></div>
+    <label>MENSAGEM DE OFERTA</label><textarea id="k6">${esc(c.msgOferta)}</textarea>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="ksalva">SALVAR</button></div></div>
+    ${sb ? `<div class="ficha"><b style="font-family:Archivo">Conta (nuvem)</b>
+    <div class="peq" style="margin:6px 0">${usuario ? 'Entrou como <b>'+esc(usuario.email)+'</b>. ' : 'Fora da conta. '}${{ok:'Tudo salvo na nuvem.', indo:'Enviando...', off:'Sem nuvem agora'+(erroNuvem?' ('+esc(erroNuvem)+')':'')+': fica guardado neste aparelho e sobe sozinho quando der.'}[estadoNuvem]||''}</div>
+    <div class="linha" style="margin-top:0"><button class="bt" id="ksinc">ATUALIZAR AGORA</button><button class="bt" id="ksair">${usuario?'SAIR DA CONTA':'ENTRAR'}</button></div></div>` : ''}
+    <div class="ficha"><b style="font-family:Archivo">Backup (cópia de segurança)</b>
+    <div class="peq" style="margin:6px 0">Último: ${c.ultimoBackup? dataBR(c.ultimoBackup)+' ('+dias(c.ultimoBackup)+' dias)' : 'nunca'}. ${usuario ? 'Os dados estão na nuvem; o backup é uma 2ª cópia: 1 por mês' : 'Clientes e vendas ficam <b>só neste aparelho</b>. Faça 1 por semana'} e guarde em Desktop\\Financas.</div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="kbk">FAZER BACKUP AGORA</button></div>
+    <label>RESTAURAR DE UM BACKUP</label><input type="file" id="kimp" accept=".json,application/json">
+    <div class="peq" style="margin-top:6px">${D.clientes.length} clientes · ${D.vendas.length} vendas · ${D.pagamentos.length} pagamentos de fiado</div></div>`;
+  $('#fx').onclick=()=>f.close();
+  $('#ksalva').onclick=()=>{
+    Object.assign(c,{chavePix:$('#k1').value.trim(), recebedor:$('#k2').value.trim(), preco:num($('#k3').value)||12.5, custo:num($('#k4').value)||0, msgCobrar:$('#k5').value, msgOferta:$('#k6').value,
+      diasCobrar:Math.max(0, parseInt($('#k7').value)||0), intervalo:Math.max(1, parseInt($('#k8').value)||3)});
+    salvar(); preco=c.preco; tudo(); toast('salvo');
+  };
+  $('#kbk').onclick=backup;
+  if(sb){ $('#ksinc').onclick=async()=>{ await sincronizar(); telaConfig(); toast(estadoNuvem==='ok'?'nuvem em dia':'sem nuvem agora'); };
+    $('#ksair').onclick=()=>usuario ? sair() : (f.close(), pedirLogin()); }
+  $('#kimp').onchange=e=>{
+    const arq=e.target.files[0]; if(!arq) return;
+    arq.text().then(t=>{ const n=JSON.parse(t); if(!n.clientes||!n.vendas) throw 0;
+      if(confirm(`Trocar os dados deste aparelho pelo backup? (${n.clientes.length} clientes, ${n.vendas.length} vendas)`)){ n.cfg=Object.assign({},PADRAO.cfg,n.cfg); n.pagamentos||=[]; D=n; sel=null; salvar(); tudo(); telaConfig(); toast('restaurado'); }
+    }).catch(()=>toast('arquivo não é um backup válido'));
+  };
+  if(!f.open) f.showModal();
+}
+async function backup(){
+  const marca = () => { D.cfg.ultimoBackup = hoje(); salvar(); tudo(); telaConfig(); };
+  const nome = 'paodemel-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  const blob = new Blob([JSON.stringify(D,null,1)], {type:'application/json'});
+  const arq = new File([blob], nome, {type:'application/json'});
+  try{ if(innerWidth<1000 && navigator.canShare && navigator.canShare({files:[arq]})){ await navigator.share({files:[arq], title:nome}); marca(); return toast('backup feito'); } }catch(e){ if(e.name==='AbortError') return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; a.click(); marca(); toast('backup baixado');
+}
+$('#btCli').onclick=telaClientes;
+$('#btCfg').onclick=telaConfig;
+
+// ===== WhatsApp (Fase B): mensagens que a Meta manda pra função "whatsapp" no Supabase =====
+// O app só LÊ as mensagens e muda o status (lida / vendida / ignorada). Quem grava é a função, com segredo no servidor.
+const K_MSG = 'paodemel_msgs';
+const MSG_VAZIO = () => ({ate:null, m:{}, pend:{}});
+let MSG = (()=>{ try{ const t = JSON.parse(localStorage.getItem(K_MSG)); if(t && t.m){ t.pend ||= {}; return t; } }catch(e){} return MSG_VAZIO(); })();
+let zapTela = null;   // null | 'lista' | chave da conversa aberta
+const guardaMsg = () => { try{ localStorage.setItem(K_MSG, JSON.stringify(MSG)); }catch(e){} };
+function quando(iso){ const d = new Date(iso), h = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); return d.toDateString()===new Date().toDateString() ? h : dataBR(iso)+' '+h; }
+async function enviarMsgs(){
+  const porSt = {}; for(const i in MSG.pend) (porSt[MSG.pend[i]] ||= []).push(i);
+  for(const st in porSt){ const {error} = await sb.from('mensagens').update({status:st}).in('id', porSt[st]); if(error) throw error; porSt[st].forEach(i=>delete MSG.pend[i]); }
+  guardaMsg();
+}
+async function baixarMsgs(){
+  const desde = MSG.ate ? new Date(new Date(MSG.ate) - 6e5).toISOString() : null;
+  for(let de = 0; ; de += 1000){
+    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,texto,data,sugestao,status,atualizado');
+    if(desde) qy = qy.gt('atualizado', desde);
+    const {data, error} = await qy.order('atualizado').order('id').range(de, de + 999);
+    if(error){ if(/mensagens/.test(error.message)) return console.warn('zap:', error.message); throw error; }   // tabela ainda não criada: não trava o resto
+    data.forEach(r => { if(!MSG.ate || r.atualizado > MSG.ate) MSG.ate = r.atualizado; if(MSG.pend[r.id]) r.status = MSG.pend[r.id]; MSG.m[r.id] = r; });
+    if(data.length < 1000) break;
+  }
+  guardaMsg();
+}
+function conversas(){
+  const g = {};
+  Object.values(MSG.m).forEach(m => { const k = m.cli || m.tel; const c = (g[k] ||= {k, cli:m.cli, tel:m.tel, nome:'', msgs:[]}); c.msgs.push(m); if(m.nome) c.nome = m.nome; });
+  return Object.values(g).map(c => {
+    c.msgs.sort((a,b)=>a.data<b.data?-1:1); c.ult = c.msgs[c.msgs.length-1];
+    c.novas = c.msgs.filter(m=>m.status==='nova').length; c.sug = c.msgs.some(m=>m.sugestao && m.status==='nova');
+    const cl = c.cli && D.clientes.find(x=>x.id===c.cli); c.titulo = (cl && cl.nome) || c.nome || telBonito(c.tel); return c;
+  }).sort((a,b)=>a.ult.data<b.ult.data?1:-1);
+}
+function pintaZap(){
+  const n = conversas().filter(c=>c.novas).length;
+  ['#zapN','#zapN2'].forEach(s=>{ const b = $(s); b.textContent = n; b.classList.toggle('oculto', !n); });
+  if($('#folha').open && zapTela) zapTela==='lista' ? telaZap() : telaConversa(zapTela, true);
+}
+function telaZap(){
+  zapTela = 'lista';
+  const f = $('#folha'), cs = conversas();
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>WhatsApp</h3>
+    ${!usuario ? '<div class="ficha peq">Entre na conta pra ver as mensagens.</div>'
+      : !cs.length ? '<div class="ficha peq">Nenhuma mensagem ainda. Quando o número estiver ligado na Meta, as conversas aparecem aqui sozinhas e o cliente novo entra na lista de clientes.</div>' : ''}
+    ${cs.map(c=>`<button class="ficha conv" data-k="${esc(c.k)}"><div style="flex:1;min-width:0">
+      <div class="nm"><b>${esc(c.titulo)}</b><small>${quando(c.ult.data)}</small></div>
+      <div class="ult">${c.ult.lado==='enviada'?'você: ':''}${esc(c.ult.texto)}</div></div>
+      ${c.sug?'<span class="ok">VENDA?</span>':''}${c.novas?`<i class="selo-n">${c.novas}</i>`:''}</button>`).join('')}`;
+  $('#fx').onclick=()=>f.close();
+  f.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>telaConversa(b.dataset.k));
+  if(!f.open) f.showModal();
+}
+function telaConversa(k, soRepinta){
+  const c = conversas().find(x=>x.k===k); if(!c) return telaZap();
+  zapTela = k;
+  const f = $('#folha'), noFim = !soRepinta || f.scrollHeight - f.scrollTop - f.clientHeight < 80;
+  const sug = m => m.status==='vendida' ? '<div class="sug"><span class="ok">VENDA ANOTADA</span></div>'
+    : !(m.sugestao && m.status==='nova') ? ''
+    : `<div class="sug"><b>VENDA?</b> ${m.sugestao.qtd} pão${m.sugestao.qtd>1?'es':''} · ${R(m.sugestao.valor)}
+       <div class="acoes">${['pix','dinheiro','cartao','fiado'].map(x=>`<button data-v="${esc(m.id)}" data-f="${x}">${NOME_F[x]}</button>`).join('')}</div>
+       <button class="bt" style="width:100%;margin-top:6px" data-ig="${esc(m.id)}">NÃO É VENDA</button></div>`;
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">VOLTAR</button><h3>${esc(c.titulo)}</h3>
+    <div class="peq">${telBonito(c.tel)} · toque em PIX/DINHEIRO/CARTÃO/FIADO pra anotar a venda com a data da mensagem</div>
+    <div class="chat">${c.msgs.slice(-200).map(m=>`<div class="bal ${m.lado}">${esc(m.texto)}<time>${quando(m.data)}</time>${sug(m)}</div>`).join('')}</div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="zr">RESPONDER NO WHATSAPP</button></div>`;
+  $('#fx').onclick=()=>telaZap();
+  $('#zr').onclick=()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, '');
+  f.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>anotar(b.dataset.v, b.dataset.f));
+  f.querySelectorAll('[data-ig]').forEach(b=>b.onclick=()=>marcar([b.dataset.ig], 'ignorada'));
+  if(!f.open) f.showModal();
+  if(noFim) f.scrollTop = f.scrollHeight;
+  const lidas = c.msgs.filter(m=>m.status==='nova' && !m.sugestao).map(m=>m.id);
+  if(lidas.length) marcar(lidas, 'lida');
+}
+function marcar(ids, st){
+  ids.forEach(i=>{ if(MSG.m[i]){ MSG.m[i].status = st; MSG.pend[i] = st; } });
+  guardaMsg(); pintaZap(); agendaNuvem();
+}
+async function anotar(mid, forma){
+  const m = MSG.m[mid]; if(!m || m.status!=='nova' || !m.sugestao) return;
+  if(!m.cli || !D.clientes.some(c=>c.id===m.cli)){ await sincronizar(); if(!m.cli || !D.clientes.some(c=>c.id===m.cli)) return toast('cliente ainda não chegou; tente de novo'); }
+  const vid = 'w' + mid.replace(/[^a-z0-9]/gi,'').slice(-30);   // id fixo: anotar 2 vezes não duplica
+  if(!D.vendas.some(v=>v.id===vid)){
+    D.vendas.push({id:vid, data:new Date(m.data).toISOString(), cli:m.cli, qtd:m.sugestao.qtd, preco:Math.round(m.sugestao.valor/m.sugestao.qtd*100)/100, forma});
+    D.vendas.sort((a,b)=>a.data<b.data?-1:1); salvar();
+  }
+  // pedido + comprovante falam do mesmo valor: as outras sugestões iguais da mesma conversa (12 h) saem da fila
+  const irmas = Object.values(MSG.m).filter(x => x.id!==mid && x.status==='nova' && x.sugestao && x.cli===m.cli && x.sugestao.valor===m.sugestao.valor && Math.abs(new Date(x.data)-new Date(m.data)) < 432e5).map(x=>x.id);
+  marcar([mid], 'vendida'); if(irmas.length) marcar(irmas, 'lida'); tudo();
+  if(navigator.vibrate) navigator.vibrate(18);
+  toast(`${forma==='fiado'?'fiado anotado':'venda anotada'} · ${R(m.sugestao.valor)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==vid); salvar(); marcar([mid, ...irmas],'nova'); tudo(); toast('desfeito'); });
+}
+$('#btZap').onclick = $('#navZap').onclick = ()=>{ telaZap(); if(usuario) sincronizar(); };
+$('#folha').addEventListener('close', ()=>{ zapTela = null; });
+
+// ===== Teclado no PC =====
+document.addEventListener('keydown',e=>{
+  if($('#dlg').open || $('#folha').open || /INPUT|TEXTAREA/.test(document.activeElement.tagName) || e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if(k==='+'||k==='='){ q++; desenha(); }
+  else if(k==='-'){ q=Math.max(1,q-1); desenha(); }
+  else if({p:'pix',d:'dinheiro',c:'cartao',f:'fiado'}[k]) vender({p:'pix',d:'dinheiro',c:'cartao',f:'fiado'}[k]);
+});
+
+// ===== Nuvem (Supabase): login + mesmos dados no PC e no celular =====
+// A chave "publishable" pode ficar no código: quem protege os dados é a regra RLS (só o dono logado lê).
+const SUPA_URL = 'https://manaljeohpeiqeseqhfh.supabase.co';   // projeto paodemel (São Paulo)
+const SUPA_KEY = 'sb_publishable_cz4ZiGn0o3L3oy4scuQL4A_bWjbFpxF';   // chave pública (NUNCA a service_role / secret)
+const K_SINC = 'paodemel_sinc', K_DONO = 'paodemel_dono', K_ANTES = 'paodemel_v1_antes_da_nuvem';
+const TABS = {clientes:['id','nome','tel'], vendas:['id','data','cli','qtd','preco','forma'], pagamentos:['id','data','cli','valor','forma']};
+const sb = (SUPA_URL && window.supabase) ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+let usuario = null, rodando = null, deNovo = false, tEnvio = 0, cfgLocalVence = false, estadoNuvem = sb ? 'off' : '', erroNuvem = '';
+
+const copia = o => JSON.parse(JSON.stringify(o));
+const linha = (tab, o) => Object.fromEntries(TABS[tab].map(k => [k, o[k]]));   // só o que vai pra nuvem
+function lerSinc(){ try{ const s = JSON.parse(localStorage.getItem(K_SINC)); if(s) return s; }catch(e){} return {clientes:{}, vendas:{}, pagamentos:{}, cfg:null, ate:null}; }
+// O que mudou neste aparelho e a nuvem ainda não tem (comparando com a última foto da nuvem).
+function pendentes(s = lerSinc()){
+  const p = {total:0};
+  for(const tab in TABS){
+    const aqui = {}; D[tab].forEach(o => aqui[o.id] = JSON.stringify(linha(tab, o)));
+    p[tab] = {muda: D[tab].filter(o => s[tab][o.id] !== aqui[o.id]).map(o => linha(tab, o)), some: Object.keys(s[tab]).filter(id => !(id in aqui))};
+    p.total += p[tab].muda.length + p[tab].some.length;
+  }
+  p.cfg = (JSON.stringify(D.cfg) !== s.cfg && (s.cfg !== null || cfgLocalVence || s.ate)) ? D.cfg : null;   // 1ª vez: config da nuvem vence, a não ser que ele tenha mandado a do aparelho
+  if(p.cfg) p.total++;
+  return p;
+}
+async function enviar(){
+  const p = pendentes(); if(!p.total) return;
+  for(const tab in TABS){
+    for(let i = 0; i < p[tab].muda.length; i += 500){
+      const {error} = await sb.from(tab).upsert(p[tab].muda.slice(i, i+500).map(o => ({...o, apagado:false})), {onConflict:'user_id,id'});
+      if(error) throw error;
+    }
+    if(p[tab].some.length){ const {error} = await sb.from(tab).update({apagado:true}).in('id', p[tab].some); if(error) throw error; }
+  }
+  if(p.cfg){ const {error} = await sb.from('config').upsert({dados:p.cfg}, {onConflict:'user_id'}); if(error) throw error; }
+}
+// Baixa só o que mudou desde a última vez (margem de 10 min) e junta com o que ainda não subiu.
+async function baixar(){
+  const s = lerSinc(), desde = s.ate ? new Date(new Date(s.ate) - 6e5).toISOString() : null;
+  const srv = {}; let ate = s.ate;
+  for(const tab in TABS){
+    srv[tab] = new Map(Object.entries(s[tab]).map(([id, j]) => [id, JSON.parse(j)]));
+    for(let de = 0; ; de += 1000){
+      let qy = sb.from(tab).select(TABS[tab].join(',') + ',apagado,atualizado');
+      if(desde) qy = qy.gt('atualizado', desde);
+      const {data, error} = await qy.order('atualizado').order('id').range(de, de + 999);
+      if(error) throw error;
+      data.forEach(r => {
+        if(!ate || r.atualizado > ate) ate = r.atualizado;
+        if(r.apagado) return srv[tab].delete(r.id);
+        if(r.data) r.data = new Date(r.data).toISOString();
+        if('preco' in r) r.preco = +r.preco; if('valor' in r) r.valor = +r.valor; if('qtd' in r) r.qtd = +r.qtd;
+        srv[tab].set(r.id, linha(tab, r));
+      });
+      if(data.length < 1000) break;
+    }
+  }
+  const {data:cf, error} = await sb.from('config').select('dados').maybeSingle(); if(error) throw error;
+  // junta: nuvem + o que mudou aqui e ainda não subiu
+  const p = pendentes(s), nova = {clientes:{}, vendas:{}, pagamentos:{}, cfg:null, ate: ate || new Date().toISOString()};
+  for(const tab in TABS){
+    srv[tab].forEach((o, id) => nova[tab][id] = JSON.stringify(o));
+    p[tab].muda.forEach(o => srv[tab].set(o.id, D[tab].find(x => x.id === o.id)));
+    p[tab].some.forEach(id => srv[tab].delete(id));
+    D[tab] = [...srv[tab].values()];
+  }
+  D.vendas.sort((a, b) => a.data < b.data ? -1 : 1); D.pagamentos.sort((a, b) => a.data < b.data ? -1 : 1);
+  if(cf){ const c = Object.assign({}, PADRAO.cfg, cf.dados); nova.cfg = JSON.stringify(c); if(!p.cfg) D.cfg = c; }
+  localStorage.setItem(K_SINC, JSON.stringify(nova));
+  if(nova.cfg !== null) cfgLocalVence = false;
+}
+function marcaNuvem(st, msg){ estadoNuvem = st; erroNuvem = msg || ''; const n = $('#nuvem'); if(n) n.className = 'nuvem ' + st; }
+async function sincronizar(){
+  if(!sb || !usuario) return;
+  if(rodando){ deNovo = true; return rodando; }
+  rodando = (async () => {
+    const antes = JSON.stringify(D);
+    marcaNuvem('indo');
+    try{
+      await enviar(); await baixar(); await enviarMsgs(); await baixarMsgs();
+      localStorage.setItem(CHAVE, JSON.stringify(D));
+      if(JSON.stringify(D) !== antes){ if(sel && !D.clientes.some(c => c.id === sel)) sel = null; preco = D.cfg.preco; tudo(); }
+      pintaZap();
+      marcaNuvem(pendentes().total ? 'indo' : 'ok');
+    }catch(e){ console.warn('nuvem:', e); marcaNuvem('off', navigator.onLine ? (e.message || String(e)) : 'sem internet'); }
+  })();
+  await rodando; rodando = null;
+  if(deNovo){ deNovo = false; sincronizar(); }
+}
+function agendaNuvem(){ if(!usuario) return; marcaNuvem('indo'); clearTimeout(tEnvio); tEnvio = setTimeout(sincronizar, 600); }
+
+function pedirLogin(){
+  const d = $('#entrar'); if(d.open) return;
+  $('#eErro').textContent = ''; d.showModal(); $('#eEmail').focus();
+}
+$('#entrar').addEventListener('cancel', e => e.preventDefault());   // sem login não fecha
+$('#fEntrar').onsubmit = async e => {
+  e.preventDefault(); const bt = $('#eBt'); bt.disabled = true; bt.textContent = 'ENTRANDO...'; $('#eErro').textContent = '';
+  const {data, error} = await sb.auth.signInWithPassword({email: $('#eEmail').value.trim(), password: $('#eSenha').value});
+  bt.disabled = false; bt.textContent = 'ENTRAR';
+  if(error) return $('#eErro').textContent = /invalid/i.test(error.message) ? 'E-mail ou senha errados.' : (navigator.onLine ? error.message : 'Sem internet: precisa de internet pra entrar a 1ª vez.');
+  $('#eSenha').value = ''; $('#entrar').close(); entrou(data.user);
+};
+function entrou(u){
+  usuario = u;
+  const dono = localStorage.getItem(K_DONO);
+  if(dono !== u.id){
+    const tem = D.clientes.length + D.vendas.length + D.pagamentos.length;
+    if(tem || D.cfg.chavePix) localStorage.setItem(K_ANTES, JSON.stringify(D));   // cópia de segurança, nunca apagada sozinha
+    localStorage.removeItem(K_SINC);
+    if(dono){ D = copia(PADRAO); }   // outra conta usava este aparelho
+    else if(tem || D.cfg.chavePix){
+      const ok = confirm(`Este aparelho tem dados guardados:\n• ${D.clientes.length} clientes\n• ${D.vendas.length} vendas\n• ${D.pagamentos.length} pagamentos de fiado\n• configurações (preço, chave Pix, mensagens)\n\nOK = mandar tudo isso pra sua conta.\nCancelar = deixar de fora (fica uma cópia guardada neste aparelho).`);
+      if(ok) cfgLocalVence = true; else D = copia(PADRAO);
+    }
+    localStorage.setItem(K_DONO, u.id); localStorage.setItem(CHAVE, JSON.stringify(D)); sel = null; tudo();
+    MSG = MSG_VAZIO(); guardaMsg();
+  }
+  // mensagem nova do WhatsApp chega na hora (Realtime; a regra "só o dono" vale aqui também)
+  sb.removeAllChannels(); sb.channel('zap').on('postgres_changes', {event:'*', schema:'public', table:'mensagens'}, () => agendaNuvem()).subscribe();
+  sincronizar();
+}
+async function sair(){
+  const p = pendentes().total;
+  if(p && !confirm(`${p} mudança(s) ainda não subiram pra nuvem e vão se perder neste aparelho. Sair mesmo?`)) return;
+  await sb.auth.signOut(); usuario = null; sb.removeAllChannels();
+  D = copia(PADRAO); localStorage.setItem(CHAVE, JSON.stringify(D)); localStorage.removeItem(K_SINC);
+  MSG = MSG_VAZIO(); localStorage.removeItem(K_MSG); pintaZap();
+  sel = null; marcaNuvem('off'); $('#folha').close(); tudo(); pedirLogin();
+}
+async function iniciarNuvem(){
+  if(!sb){ if(SUPA_URL) marcaNuvem('off', 'não carregou o Supabase (sem internet?)'); return; }
+  const {data} = await sb.auth.getSession();
+  if(data.session) entrou(data.session.user);
+  else if(localStorage.getItem(K_DONO) && !navigator.onLine) marcaNuvem('off', 'sem internet');   // usa a cópia do aparelho
+  else pedirLogin();
+  sb.auth.onAuthStateChange((ev, ses) => { if(ev === 'SIGNED_OUT' && usuario){ usuario = null; marcaNuvem('off', 'saiu da conta'); pedirLogin(); } });
+  addEventListener('online', sincronizar);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) sincronizar(); });
+  setInterval(() => { if(!document.hidden) sincronizar(); }, 60000);
+}
+
+// ===== Começo =====
+$('#qr').innerHTML=[1,1,1,0,1,0,1,1,1,1,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,1,0,1,0,1,0,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1].map(v=>`<i class="${v?'':'v'}"></i>`).join('');
+$('#data').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','').toUpperCase();
+function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaMes(); }
+tudo(); pintaZap();
+iniciarNuvem();
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
