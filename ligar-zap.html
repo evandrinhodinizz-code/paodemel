@@ -44,7 +44,8 @@ let sessao = null, info = {}, code = null, enviado = false;
 
 // Dados do número escolhido (a Meta manda por mensagem da janela dela).
 window.addEventListener('message', ev => {
-  if (!/(^|\.)facebook\.com$/.test(new URL(ev.origin).hostname)) return;
+  let host = ''; try { host = new URL(ev.origin).hostname; } catch {}
+  if (!/(^|\.)facebook\.com$/.test(host)) return;
   let d; try { d = JSON.parse(ev.data); } catch { return; }
   if (d.type !== 'WA_EMBEDDED_SIGNUP') return;
   if (/^FINISH/.test(d.event)) { info = d.data || {}; escreve('Número escolhido ✓ (' + d.event + ')', 'ok'); termina(); }
@@ -68,21 +69,44 @@ window.fbAsyncInit = () => {
   if (sessao) { $btn.disabled = false; $btn.textContent = 'LIGAR MEU WHATSAPP'; }
 };
 
+// Caminho sem janela (quando um bloqueador de anúncio barra o SDK do Facebook): vai pra Meta e volta com ?code=.
+const VOLTA = location.origin + location.pathname;
+const EXTRAS = { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' };
+const semJanela = () => {
+  const u = new URL('https://www.facebook.com/v27.0/dialog/oauth');
+  Object.entries({ client_id: APP_ID, config_id: CONFIG_ID, response_type: 'code', override_default_response_type: 'true',
+    redirect_uri: VOLTA, extras: JSON.stringify(EXTRAS) }).forEach(([k, v]) => u.searchParams.set(k, v));
+  location.href = u;
+};
+
 $btn.onclick = () => {
   $log.textContent = ''; enviado = false; code = null; info = {};
+  if (!window.FB) return semJanela();
   FB.login(r => {
     if (r.authResponse?.code) { code = r.authResponse.code; escreve('Login na Meta ✓'); termina(); }
     else escreve('Login na Meta não concluído.', 'erro');
   }, {
     config_id: CONFIG_ID, response_type: 'code', override_default_response_type: true,
-    extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+    extras: EXTRAS,
   });
 };
 
 (async () => {
   const { data } = await sb.auth.getSession();
   sessao = data.session;
+  const q = new URLSearchParams(location.search);
   if (!sessao) { $btn.textContent = 'ENTRE NO APP PRIMEIRO'; escreve('Você não está logado no app neste navegador. Abra o app, entre, e volte aqui.', 'erro'); return; }
+  // Voltou da Meta pelo caminho sem janela.
+  if (q.get('code')) {
+    history.replaceState(null, '', VOLTA);
+    escreve('Voltou da Meta ✓ Ligando no servidor…');
+    const { data: r, error } = await sb.functions.invoke('ligar-zap', { body: { code: q.get('code'), redirect_uri: VOLTA } });
+    if (error) { let m = error.message; try { m = JSON.stringify(await error.context.json()); } catch {} escreve('Falhou: ' + m, 'erro'); }
+    else { escreve(r.ok ? 'PRONTO ✓ ' + (r.telefone || '') + ' ligado. Mande uma mensagem de outro número e veja na aba ZAP.' : 'Quase: veja os detalhes abaixo.', r.ok ? 'ok' : 'erro'); escreve(JSON.stringify(r.passos, null, 1)); }
+  } else if (q.get('error')) {
+    escreve('A Meta não concluiu: ' + (q.get('error_description') || q.get('error')), 'erro');
+  }
+  $btn.disabled = false; $btn.textContent = 'LIGAR MEU WHATSAPP';   // sem SDK → caminho sem janela
   const s = document.createElement('script');
   s.src = 'https://connect.facebook.net/en_US/sdk.js'; s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
   document.head.append(s);
