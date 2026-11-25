@@ -326,6 +326,7 @@ const PADRAO = {
     msgFiado: 'Oi {nome}! Anotei R$ {valor} do pão de mel ({qtd} un). Paga quando puder, no Pix: {pix}. Obrigado!',
     msgOferta: 'Oi {nome}! Tudo bem? Chegou novidade: {produto}. Quer que eu separe pra você?',
     produtoNovo: '',
+    zapPonte: null,     // true = respostas do ZAP saem pelo WhatsApp Web do PC (extensão); null = ainda não decidido (liga sozinho quando achar a extensão)
     diasCobrar: 7,      // fiado com X dias ou mais entra no "COBRAR HOJE"
     intervalo: 3,       // depois de cobrar (ou pular), volta pra fila só depois de X dias
     cobrados: {}        // {idCliente: data da última cobrança} (vai pra nuvem junto com a config)
@@ -659,6 +660,9 @@ function telaConfig(){
     ${sb ? `<div class="ficha"><b style="font-family:Archivo">Conta (nuvem)</b>
     <div class="peq" style="margin:6px 0">${usuario ? 'Entrou como <b>'+esc(usuario.email)+'</b>. ' : 'Fora da conta. '}${{ok:'Tudo salvo na nuvem.', indo:'Enviando...', off:'Sem nuvem agora'+(erroNuvem?' ('+esc(erroNuvem)+')':'')+': fica guardado neste aparelho e sobe sozinho quando der.'}[estadoNuvem]||''}</div>
     <div class="linha" style="margin-top:0"><button class="bt" id="ksinc">ATUALIZAR AGORA</button><button class="bt" id="ksair">${usuario?'SAIR DA CONTA':'ENTRAR'}</button></div></div>` : ''}
+    <div class="ficha"><b style="font-family:Archivo">Responder pelo WhatsApp Web do PC</b>
+    <div class="peq" style="margin:6px 0">${c.zapPonte ? '<b>LIGADO.</b> O que você escreve no ZAP (aqui ou no celular) sai do seu número pelo PC: Chrome aberto com o WhatsApp Web e este app. Travas: só pra quem já te mandou mensagem, 1 por vez, até 20 por hora e 80 por dia.' : '<b>DESLIGADO.</b> Liga quando a extensão "ponte do WhatsApp" estiver no Chrome do PC.'}${EXT ? ' Extensão encontrada neste PC.' : ''}</div>
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="kponte">${c.zapPonte ? 'DESLIGAR ENVIO PELO PC' : 'LIGAR ENVIO PELO PC'}</button></div></div>
     <div class="ficha"><b style="font-family:Archivo">Backup (cópia de segurança)</b>
     <div class="peq" style="margin:6px 0">Último: ${c.ultimoBackup? dataBR(c.ultimoBackup)+' ('+dias(c.ultimoBackup)+' dias)' : 'nunca'}. ${usuario ? 'Os dados estão na nuvem; o backup é uma 2ª cópia: 1 por mês' : 'Clientes e vendas ficam <b>só neste aparelho</b>. Faça 1 por semana'} e guarde em Desktop\\Financas.</div>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="kbk">FAZER BACKUP AGORA</button></div>
@@ -671,6 +675,7 @@ function telaConfig(){
     salvar(); preco=c.preco; tudo(); toast('salvo');
   };
   $('#kbk').onclick=backup;
+  $('#kponte').onclick=()=>{ c.zapPonte = !c.zapPonte; salvar(); praExt({tipo:'ligar', ligada:c.zapPonte}); const zf = $('#zf'); if(zf) delete zf.dataset.j; telaConfig(); toast(c.zapPonte ? 'envio pelo PC ligado' : 'envio pelo PC desligado'); };
   if(sb){ $('#ksinc').onclick=async()=>{ await sincronizar(); telaConfig(); toast(estadoNuvem==='ok'?'nuvem em dia':'sem nuvem agora'); };
     $('#ksair').onclick=()=>usuario ? sair() : (f.close(), pedirLogin()); }
   $('#kimp').onchange=e=>{
@@ -719,7 +724,8 @@ async function baixarMsgs(){
 }
 function conversas(){
   const g = {};
-  Object.values(MSG.m).forEach(m => { const k = m.cli || m.tel; const c = (g[k] ||= {k, cli:m.cli, tel:m.tel, nome:'', msgs:[]}); c.msgs.push(m); if(m.nome) c.nome = m.nome; });
+  Object.values(MSG.m).forEach(m => { if(m.entrega==='feita') return;   // da fila, já enviada (a cópia real "web_" aparece no lugar)
+    const k = m.cli || m.tel; const c = (g[k] ||= {k, cli:m.cli, tel:m.tel, nome:'', msgs:[]}); c.msgs.push(m); if(m.nome) c.nome = m.nome; });
   return Object.values(g).map(c => {
     c.msgs.sort((a,b)=>a.data<b.data?-1:1); c.ult = c.msgs[c.msgs.length-1];
     c.novas = c.msgs.filter(m=>m.status==='nova').length; c.sug = c.msgs.some(m=>m.sugestao && m.status==='nova');
@@ -741,7 +747,7 @@ const ZI = {
   sai:'<svg viewBox="0 0 24 24"><path d="M14 3v2h3.6l-9.8 9.8 1.4 1.4L19 6.4V10h2V3zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2z"/></svg>'
 };
 function tique(m, naLista){
-  if(m.pend) return `<i class="tq">${ZI.rel}</i>`;
+  if(m.pend || m.entrega==='fila') return `<i class="tq">${ZI.rel}</i>`;
   if(m.lado!=='enviada' || !m.entrega) return '';
   const e = m.entrega;
   if(e.startsWith('failed')) return naLista ? '<i class="tq-x">!</i>' : `<button class="tq-x" data-falha="${esc(e.slice(7))}" aria-label="não chegou">!</button>`;
@@ -835,8 +841,21 @@ let EXT = false;
 const praExt = o => window.postMessage(Object.assign({origem:'paodemel'}, o), location.origin);
 addEventListener('message', async e => {
   const m = e.data; if(e.source !== window || !m || m.origem !== 'zap-ext') return;
-  if(m.tipo === 'oi'){ if(!EXT){ EXT = true; const zf = $('#zf'); if(zf) delete zf.dataset.j; pintaZap(); } }
-  else if(m.tipo === 'preencheu'){ if(m.r && m.r.erro) toast('não abriu: ' + m.r.erro); }
+  if(m.tipo === 'oi'){ if(!EXT && m.versao >= 2){ EXT = true;
+      if(D.cfg.zapPonte === null){ D.cfg.zapPonte = true; salvar(); }   // 1ª vez com a extensão nova: liga o envio pelo PC
+      praExt({tipo:'ligar', ligada: D.cfg.zapPonte !== false});
+      const zf = $('#zf'); if(zf) delete zf.dataset.j; pintaZap(); despachaZap(); } }
+  else if(m.tipo === 'naFila'){ if(m.r && m.r.semWhats) toast('abra o WhatsApp Web neste PC pra enviar'); }
+  else if(m.tipo === 'enviou'){   // resultado dos envios pelo WhatsApp Web → grava na nuvem
+    if(!sb || !usuario || !m.lista || !m.lista.length) return;
+    const {error} = TESTE ? {error:null} : await sb.functions.invoke('zap-extensao', {body:{feitas:m.lista}});
+    if(error) return console.warn('zap-extensao feitas:', error.message);
+    if(TESTE) m.lista.forEach(r => { const f = MSG.m[r.fila]; if(!f) return;
+      if(r.ok){ MSG.m['web_' + r.id] = Object.assign({}, f, {id:'web_' + r.id, entrega:'sent'}); f.entrega = 'feita'; } else f.entrega = 'failed:' + r.erro; });
+    praExt({tipo:'gravouEnvio', ids:m.lista.map(r => r.fila)});
+    m.lista.filter(r => !r.ok).forEach(r => toast('não enviou: ' + r.erro));
+    TESTE ? pintaZap() : sincronizar();
+  }
   else if(m.tipo === 'msgs'){
     if(!sb || !usuario || !m.lista || !m.lista.length) return;
     const {data, error} = TESTE ? {data:{ok:true}, error:null} : await sb.functions.invoke('zap-extensao', {body:{msgs:m.lista}});
@@ -847,16 +866,34 @@ addEventListener('message', async e => {
   }
 });
 praExt({tipo:'oi'});
-function janelaZap(c){ if(EXT) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
+// Envio pelo PC: no celular ou no PC a resposta vai pra uma FILA na nuvem; a aba do app no PC (com a extensão) passa pro WhatsApp Web.
+const ponteZap = () => D.cfg.zapPonte === true;
+function despachaZap(){
+  if(!EXT || !ponteZap()) return;
+  const lista = Object.values(MSG.m).filter(m => m.entrega === 'fila').map(m => ({fila:m.id, tel:m.tel, texto:m.texto}));
+  if(lista.length) praExt({tipo:'enviar', lista});
+}
+setInterval(despachaZap, 20000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
+function janelaZap(c){ if(ponteZap()) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
   const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
 async function responderZap(c, texto){
   texto = (texto||'').trim(); if(!texto) return;
-  if(EXT){   // PC com a extensão: abre a conversa no WhatsApp Web com o texto pronto; ELE aperta Enter
+  if(ponteZap()){
     const tel = c.tel || ((c.cli && D.clientes.find(x => x.id === c.cli)) || {}).tel;
     if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
-    praExt({tipo:'preencher', tel, nome:c.titulo, texto});
+    if(!sb || !usuario) return toast('entre na conta primeiro');
     delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); }
-    return toast('texto no WhatsApp Web: aperte Enter lá');
+    try{
+      const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel, cli:c.cli, texto}}});
+      if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
+      MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
+      guardaMsg(); telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
+      if(EXT) despachaZap(); else toast('na fila: sai pelo PC (WhatsApp Web aberto)');
+    }catch(e){
+      toast('não foi pra fila: ' + e.message);
+      if(!RASC[c.k]){ RASC[c.k] = texto; const z2 = $('#zt'); if(z2 && zapTela===c.k){ z2.value = texto; cresceZap(z2); } }
+    }
+    return;
   }
   if(!sb || !usuario) return toast('entre na conta primeiro');
   const p = {k:c.k, texto, data:new Date().toISOString(), lado:'enviada', pend:true}; PEND_ZAP.push(p);   // aparece na hora com o reloginho, como no WhatsApp
