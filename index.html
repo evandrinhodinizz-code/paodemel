@@ -1335,25 +1335,31 @@ function entrou(u){
   ligaAoVivo();
   sincronizar();
 }
-// Realtime: o canal caía em erro e ficava parado (25/11) → só o giro de 10 s pegava a fila (~20–30 s). Agora reconecta sozinho.
-let tVivo = null, aoVivo = false, vivoN = 0;
-function ligaAoVivo(){
-  clearTimeout(tVivo); const meu = ++vivoN; sb.removeAllChannels(); aoVivo = false;
-  sb.channel('zap' + meu).on('postgres_changes', {event:'*', schema:'public', table:'mensagens'}, ev => {
-    const n = ev.new || {};
-    if(n.entrega === 'fila' && EXT && ponteZap()) baixarMsgs().then(() => { despachaZap(); pintaZap(); }).catch(e => console.warn('zap fila:', e));   // PC: fila do celular sai na hora
-    else if(!document.hidden || EXT) baixarMsgs().then(pintaZap).catch(e => console.warn('zap:', e));   // mensagem/tique novo aparece na hora
-    agendaNuvem();
-  }).subscribe(st => {
-    if(meu !== vivoN) return;   // canal antigo fechando: ignora
-    aoVivo = st === 'SUBSCRIBED';
-    if(/ERROR|TIMED_OUT|CLOSED/.test(st) && usuario){ clearTimeout(tVivo); tVivo = setTimeout(ligaAoVivo, 3000); }
-  });
+// Realtime (aviso na hora): a biblioteca do Supabase (2.117) derrubava o canal ("transport failure") e o app só via a fila
+// no giro de 10 s (~20–30 s, tique só com F5). Agora é um WebSocket direto (protocolo do Supabase Realtime), que religa sozinho.
+let vivo = null, aoVivo = false, tVivo = null, tBate = null, vivoRef = 0;
+async function ligaAoVivo(){
+  clearTimeout(tVivo); clearInterval(tBate); if(vivo){ vivo.onclose = null; try{ vivo.close(); }catch(e){} vivo = null; } aoVivo = false;
+  if(!usuario || TESTE) return;
+  const {data} = await sb.auth.getSession(); const tk = data.session && data.session.access_token; if(!tk) return;
+  const ws = vivo = new WebSocket(SUPA_URL.replace('https', 'wss') + '/realtime/v1/websocket?apikey=' + SUPA_KEY + '&vsn=1.0.0');
+  const manda = (event, payload) => ws.readyState === 1 && ws.send(JSON.stringify({topic:'realtime:zap', event, payload, ref:String(++vivoRef), join_ref:'1'}));
+  ws.onopen = () => { manda('phx_join', {config:{broadcast:{ack:false, self:false}, presence:{key:''}, postgres_changes:[{event:'*', schema:'public', table:'mensagens'}], private:false}, access_token:tk});
+    tBate = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({topic:'phoenix', event:'heartbeat', payload:{}, ref:String(++vivoRef)})), 25000); };
+  ws.onmessage = e => { let m; try{ m = JSON.parse(e.data); }catch(x){ return; }
+    if(m.event === 'phx_reply' && m.payload && m.payload.status === 'ok' && m.topic === 'realtime:zap') aoVivo = true;
+    else if(m.event === 'postgres_changes'){ const n = (m.payload && m.payload.data && m.payload.data.record) || {};
+      if(n.entrega === 'fila' && EXT && ponteZap()) baixarMsgs().then(() => { despachaZap(); pintaZap(); }).catch(x => console.warn('zap fila:', x));   // PC: fila do celular sai na hora
+      else baixarMsgs().then(pintaZap).catch(x => console.warn('zap:', x));   // mensagem nova / tique ✓✓ aparece na hora
+      agendaNuvem(); }
+    else if(m.event === 'phx_error' || m.event === 'phx_close') ws.close(); };
+  ws.onclose = () => { if(vivo !== ws) return; aoVivo = false; clearInterval(tBate); if(usuario) tVivo = setTimeout(ligaAoVivo, 3000); };
 }
+sb && sb.auth.onAuthStateChange(ev => { if(ev === 'TOKEN_REFRESHED' && usuario) ligaAoVivo(); });   // crachá novo (a cada ~1 h)
 async function sair(){
   const p = pendentes().total;
   if(p && !confirm(`${p} mudança(s) ainda não subiram pra nuvem e vão se perder neste aparelho. Sair mesmo?`)) return;
-  await sb.auth.signOut(); usuario = null; sb.removeAllChannels();
+  await sb.auth.signOut(); usuario = null; ligaAoVivo();
   D = copia(PADRAO); localStorage.setItem(CHAVE, JSON.stringify(D)); localStorage.removeItem(K_SINC);
   MSG = MSG_VAZIO(); localStorage.removeItem(K_MSG); pintaZap();
   sel = null; marcaNuvem('off'); $('#folha').close(); tudo(); pedirLogin();
