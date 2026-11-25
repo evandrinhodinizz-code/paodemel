@@ -1295,7 +1295,7 @@ async function sincronizar(){
       await enviar(); await baixar(); await enviarMsgs(); await baixarMsgs(); await baixarZapC();
       localStorage.setItem(CHAVE, JSON.stringify(D));
       if(JSON.stringify(D) !== antes){ if(sel && !D.clientes.some(c => c.id === sel)) sel = null; preco = D.cfg.preco; tudo(); }
-      pintaZap();
+      pintaZap(); despachaZap();
       marcaNuvem(pendentes().total ? 'indo' : 'ok');
     }catch(e){ console.warn('nuvem:', e); marcaNuvem('off', navigator.onLine ? (e.message || String(e)) : 'sem internet'); }
   })();
@@ -1332,8 +1332,23 @@ function entrou(u){
     MSG = MSG_VAZIO(); guardaMsg();
   }
   // mensagem nova do WhatsApp chega na hora (Realtime; a regra "só o dono" vale aqui também)
-  sb.removeAllChannels(); sb.channel('zap').on('postgres_changes', {event:'*', schema:'public', table:'mensagens'}, () => agendaNuvem()).subscribe();
+  ligaAoVivo();
   sincronizar();
+}
+// Realtime: o canal caía em erro e ficava parado (25/11) → só o giro de 10 s pegava a fila (~20–30 s). Agora reconecta sozinho.
+let tVivo = null, aoVivo = false, vivoN = 0;
+function ligaAoVivo(){
+  clearTimeout(tVivo); const meu = ++vivoN; sb.removeAllChannels(); aoVivo = false;
+  sb.channel('zap' + meu).on('postgres_changes', {event:'*', schema:'public', table:'mensagens'}, ev => {
+    const n = ev.new || {};
+    if(n.entrega === 'fila' && EXT && ponteZap()) baixarMsgs().then(() => { despachaZap(); pintaZap(); }).catch(e => console.warn('zap fila:', e));   // PC: fila do celular sai na hora
+    else if(!document.hidden || EXT) baixarMsgs().then(pintaZap).catch(e => console.warn('zap:', e));   // mensagem/tique novo aparece na hora
+    agendaNuvem();
+  }).subscribe(st => {
+    if(meu !== vivoN) return;   // canal antigo fechando: ignora
+    aoVivo = st === 'SUBSCRIBED';
+    if(/ERROR|TIMED_OUT|CLOSED/.test(st) && usuario){ clearTimeout(tVivo); tVivo = setTimeout(ligaAoVivo, 3000); }
+  });
 }
 async function sair(){
   const p = pendentes().total;
@@ -1351,7 +1366,7 @@ async function iniciarNuvem(){
   else pedirLogin();
   sb.auth.onAuthStateChange((ev, ses) => { if(ev === 'SIGNED_OUT' && usuario){ usuario = null; marcaNuvem('off', 'saiu da conta'); pedirLogin(); } });
   addEventListener('online', sincronizar);
-  document.addEventListener('visibilitychange', () => { if(!document.hidden) sincronizar(); });
+  document.addEventListener('visibilitychange', () => { if(!document.hidden){ sincronizar(); if(usuario && !aoVivo) ligaAoVivo(); } });   // celular voltou do fundo: religa o "ao vivo"
   setInterval(() => { if(!document.hidden) sincronizar(); }, 10000);   // 10 s: ZAP do app e WhatsApp Business juntos enquanto ele trabalha
 }
 
