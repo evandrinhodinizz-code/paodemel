@@ -808,7 +808,7 @@ async function enviarMsgs(){
 async function baixarMsgs(){
   const desde = MSG.ate ? new Date(new Date(MSG.ate) - 6e5).toISOString() : null;
   for(let de = 0; ; de += 1000){
-    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,midia,texto,data,sugestao,status,atualizado,entrega');
+    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,texto,data,sugestao,status,atualizado,entrega');   // 'midia' volta quando a coluna existir no Supabase (supabase-whatsapp.sql); sem ela a busca falhava e nada chegava
     if(desde) qy = qy.gt('atualizado', desde);
     const {data, error} = await qy.order('atualizado').order('id').range(de, de + 999);
     if(error){ if(/mensagens/.test(error.message)) return console.warn('zap:', error.message); throw error; }   // tabela ainda não criada: não trava o resto
