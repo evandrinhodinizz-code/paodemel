@@ -56,7 +56,7 @@ header small{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;opacity
 .tag.on{background:var(--tinta);color:var(--papel)}
 .tag small{color:var(--verm);font-weight:600}.tag.on small{color:#f4a597}
 .tag.novo{background:#fffcf680}
-.tags.chama{animation:chama .4s}
+.tags.chama,.achacli.chama{animation:chama .4s}
 @keyframes chama{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
 .impressora{margin:0 16px;height:14px;flex:none;background:linear-gradient(#33241a,#140c07);border-radius:7px;position:relative;z-index:3;box-shadow:0 3px 6px #0006}
@@ -75,6 +75,19 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .l .vazio{color:#a8a39b;font-weight:400}
 .tot{font-size:28px;font-weight:600;letter-spacing:-1px;line-height:1.3}
 .preco{border-bottom:1px dotted #8a8a8a;cursor:pointer}
+.achacli{display:flex;gap:8px;align-items:center;margin:0 20px 10px}
+.achacli .busca{flex:1;margin:0;min-width:0}
+.achacli .tag{padding-top:8px;padding-bottom:8px}
+.tag .x{margin-left:8px;opacity:.7}
+.tags:empty{padding:0}
+.precos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.precos button{font-family:var(--mono);font-weight:600;font-size:13px;padding:8px 0;border:1px solid #2b2b2b;border-radius:2px;transition:transform .08s,background .08s}
+.precos button.on{background:#2b2b2b;color:var(--papel)}
+.precos button:active{transform:scale(.94)}
+.qtd2{display:flex;align-items:center;justify-content:center;gap:18px;margin:10px 0 4px}
+.qtd2 b{font-family:var(--mono);font-size:22px;min-width:44px;text-align:center}
+.qtd2 button{font-family:var(--mono);font-weight:600;font-size:20px;width:52px;height:40px;border:1px solid #2b2b2b;border-radius:2px;transition:transform .08s}
+.qtd2 button:active{transform:scale(.94);background:#2b2b2b0d}
 .qtd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .qtd button{font-family:var(--mono);font-weight:600;font-size:14px;padding:8px 0;border:1px solid #2b2b2b;border-radius:2px;transition:transform .08s,background .08s}
 .qtd button:active{transform:scale(.94);background:#2b2b2b0d}
@@ -123,6 +136,17 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .acoes button,.bt{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:1.2px;padding:9px 0;border:1px solid #2b2b2b;border-radius:2px;text-align:center}
 .acoes .zap,.bt.cheio{background:#2b2b2b;color:var(--papel)}
+.espfil{padding:0 0 6px}
+.espab{display:flex;gap:6px;overflow-x:auto;padding:0 20px 10px;scrollbar-width:none}
+.espab::-webkit-scrollbar{display:none}
+.espab button{flex:none;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #24171055;background:#fffcf6aa;border-radius:2px}
+.espab button.on{background:var(--tinta);color:var(--papel);border-color:var(--tinta)}
+.espab small{opacity:.7}
+.nota .nm{padding-right:84px}
+.nota .ic{position:absolute;top:6px;right:6px;display:flex;gap:2px}
+.nota .ic button{width:40px;height:40px;display:grid;place-items:center;opacity:.7;border-radius:50%}
+.nota .ic button:active{background:#2b2b2b14;opacity:1}
+.nota .ic button[data-apaga]{color:var(--verm)}
 .vazio-esp{margin:30px 20px;text-align:center;font-family:"Special Elite";font-size:18px;opacity:.7}
 
 /* ===== MÊS ===== */
@@ -292,7 +316,7 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
     <section class="pag vender">
       <h2 class="coltit">VENDER</h2>
       <div id="avisos"></div>
-      <input class="busca oculto" id="busca" placeholder="procurar cliente…" autocomplete="off">
+      <div class="achacli"><input class="busca" id="busca" placeholder="buscar nome ou número" autocomplete="off" inputmode="search"><button class="tag novo" id="tagNovo">+ CLIENTE NOVO</button></div>
       <div class="tags" id="tags"></div>
       <div class="impressora"></div>
       <div class="janela"><div class="cupom" id="cupom">
@@ -301,9 +325,10 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
         <hr>
         <div class="l"><span>CLIENTE</span><b id="cli"></b></div>
         <div class="l"><span>PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
+        <div class="precos" id="precos"></div>
+        <div class="qtd2"><button data-d="-1" aria-label="menos um">−</button><b id="q2"></b><button data-d="1" aria-label="mais um">+</button></div>
         <hr>
-        <div class="l tot"><span>TOTAL</span><span id="t"></span></div>
-        <div class="qtd"><button data-d="-1">−1</button><button data-d="1">+1</button><button data-d="5">+5</button><button data-d="10">+10</button></div>
+        <div class="l tot"><span>TOTAL</span><span class="preco" id="t" title="digitar o total"></span></div>
         <div class="carimbo" id="carimbo">PAGO</div>
       </div></div>
       <div class="bandeja">
@@ -317,6 +342,8 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
 
     <section class="pag">
       <h2 class="coltit">ESPETO · QUEM DEVE</h2>
+      <div class="espfil"><div class="espab" id="espab"></div>
+        <div class="achacli"><input class="busca" id="espbusca" placeholder="buscar nome ou número" autocomplete="off" inputmode="search"><button class="tag novo" id="espord"></button></div></div>
       <div id="espeto"></div>
     </section>
 
@@ -354,13 +381,14 @@ const PADRAO = {
   vendas: [],       // {id, data, cli, qtd, preco, forma:'pix'|'dinheiro'|'cartao'|'fiado'}
   pagamentos: [],   // {id, data, cli, valor, forma}  (pagamento de fiado)
   cfg: {
-    preco: 12.5, custo: 3.34, chavePix: '', recebedor: '', ultimoBackup: null,
+    preco: 12.5, precos: [12.5, 15, 20], custo: 3.34, chavePix: '', recebedor: '', ultimoBackup: null,
     msgCobrar: 'Oi {nome}! Tudo bem? Passando pra lembrar do pão de mel que ficou pendente: R$ {valor}. Pode pagar no Pix: {pix}. Obrigado!',
     msgFiado: 'Oi {nome}! Anotei R$ {valor} do pão de mel ({qtd} un). Paga quando puder, no Pix: {pix}. Obrigado!',
     msgOferta: 'Oi {nome}! Tudo bem? Chegou novidade: {produto}. Quer que eu separe pra você?',
     produtoNovo: '',
     pcWhats: 'app',     // PC: 'app' = abre o WhatsApp instalado (whatsapp://); 'web' = WhatsApp Web
     zapPonte: null,     // true = respostas do ZAP saem pelo WhatsApp Web do PC (extensão); null = ainda não decidido (liga sozinho quando achar a extensão)
+    diasNovo: 7, diasRisco: 30, espOrdem: 'velhos',   // filtro do Espeto: recentes ≤ diasNovo; risco ≥ diasRisco; ordem mais antigo 1º
     diasCobrar: 7,      // fiado com X dias ou mais entra no "COBRAR HOJE"
     intervalo: 3,       // depois de cobrar (ou pular), volta pra fila só depois de X dias
     cobrados: {}        // {idCliente: data da última cobrança} (vai pra nuvem junto com a config)
@@ -454,30 +482,38 @@ function pintaAvisos(){
 function pintaTags(){
   const freq = {}; D.vendas.forEach(v=>freq[v.cli]=(freq[v.cli]||0)+1);
   const dv = {}; devedores().forEach(d=>dv[d.cid]=d.total);
-  const lista = D.clientes.slice().sort((a,b)=>(freq[b.id]||0)-(freq[a.id]||0) || a.nome.localeCompare(b.nome));
-  const filtro = $('#busca').value.trim().toLowerCase();
-  $('#busca').classList.toggle('oculto', D.clientes.length <= 8);
-  $('#tags').innerHTML = lista.filter(c=>!filtro || c.nome.toLowerCase().includes(filtro)).map(c=>
-    `<button class="tag${c.id===sel?' on':''}" data-id="${c.id}">${esc(c.nome)}${dv[c.id]?` <small>−${Math.round(dv[c.id])}</small>`:''}</button>`).join('')
-    + `<button class="tag novo" id="tagNovo">+ NOVO</button>`;
-  $$('#tags .tag[data-id]').forEach(b=>b.onclick=()=>{ sel=b.dataset.id; pintaTags(); desenha(); });
-  $('#tagNovo').onclick=()=>novoCliente(true);
+  // só aparece o cliente escolhido + quem bate com a busca (nome ou número), no máx. 8; nada de lista grande aberta
+  const filtro = $('#busca').value.trim().toLowerCase(), dig = filtro.replace(/\D/g,'');
+  const bate = c => c.nome.toLowerCase().includes(filtro) || (dig.length >= 3 && String(c.tel||'').includes(dig));
+  const lista = filtro ? D.clientes.filter(c=>c.id!==sel && bate(c)).sort((a,b)=>(freq[b.id]||0)-(freq[a.id]||0) || a.nome.localeCompare(b.nome)).slice(0, 8) : [];
+  const tag = (c, on) => `<button class="tag${on?' on':''}" data-id="${c.id}">${esc(c.nome)}${dv[c.id]?` <small>−${Math.round(dv[c.id])}</small>`:''}${on?'<span class="x">✕</span>':''}</button>`;
+  $('#tags').innerHTML = (sel && cliPor(sel) ? tag(cliPor(sel), true) : '') + lista.map(c=>tag(c, false)).join('')
+    + (filtro && !lista.length ? `<span class="peq" style="padding:6px 4px">ninguém com "${esc(filtro)}" · toque em + CLIENTE NOVO</span>` : '');
+  $$('#tags .tag[data-id]').forEach(b=>b.onclick=()=>{ sel = sel===b.dataset.id ? null : b.dataset.id; $('#busca').value=''; pintaTags(); desenha(); });
 }
 $('#busca').oninput = pintaTags;
+$('#busca').onkeydown = e=>{ if(e.key==='Enter'){ const b = $('#tags .tag:not(.on)'); if(b) b.click(); $('#busca').blur(); } };
+$('#tagNovo').onclick=()=>novoCliente(true);
+const precosBt = () => (D.cfg.precos && D.cfg.precos.length ? D.cfg.precos : PADRAO.cfg.precos);
 function desenha(){
-  const t = v2(q*preco);
-  $('#q').textContent=q; $('#t').textContent=t; $('#din').textContent=t; $('#preco').textContent=v2(preco);
-  $('#cli').innerHTML = sel ? esc(cliPor(sel).nome.toUpperCase()) : '<span class="vazio">escolha acima</span>';
+  const t = v2(q*preco), ps = precosBt(), outro = !ps.some(p=>Math.abs(p-preco)<0.005);
+  $('#q').textContent=q; $('#q2').textContent=q; $('#t').textContent=t; $('#din').textContent=t; $('#preco').textContent=v2(preco);
+  $('#precos').innerHTML = ps.map(p=>`<button class="${Math.abs(p-preco)<0.005?'on':''}" data-p="${p}">${v2(p)}</button>`).join('')
+    + `<button class="${outro?'on':''}" data-p="outro">${outro?v2(preco):'OUTRO'}</button>`;
+  $$('#precos button').forEach(b=>b.onclick=()=>{ if(b.dataset.p==='outro') return pedePreco(); preco=+b.dataset.p; desenha(); });
+  $('#cli').innerHTML = sel ? esc(cliPor(sel).nome.toUpperCase()) : '<span class="vazio">busque acima</span>';
   $('#numc').textContent = String(D.vendas.length+1).padStart(4,'0');
   $('#datac').textContent = new Date().toLocaleDateString('pt-BR');
 }
-$$('.qtd button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
-$('#preco').onclick=()=>{ const p=prompt('Preço de cada pão nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); desenha(); } };
+function pedePreco(){ const p=prompt('Preço de cada pão nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); desenha(); } }
+$$('.qtd2 button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
+$('#preco').onclick=pedePreco;
+$('#t').onclick=()=>{ const p=prompt(`Total da venda (${q} pão${q>1?'es':''}) em R$:`, v2(q*preco)); if(p && num(p)>0){ preco=Math.round(num(p)/q*10000)/10000; desenha(); } };
 $$('.bandeja .obj').forEach(b=>b.onclick=()=>vender(b.dataset.f));
 
 function vender(f){
   if(ocupado) return;
-  if(!sel){ const t=$('#tags'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); return toast('escolha o cliente primeiro'); }
+  if(!sel){ const t=$('.achacli'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); $('#busca').focus(); return toast('busque o cliente primeiro'); }
   ocupado = true;
   const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
   D.vendas.push(venda); salvar();
@@ -494,19 +530,39 @@ function vender(f){
 }
 
 // ===== ESPETO =====
+// Filtro do Espeto: faixa pela dívida mais antiga (dias no ⚙) + busca + ordem
+let espFaixa = 'todos';
+const ICO = {lapis:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
+  lixo:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>'};
+function faixaDe(n){ return n >= (D.cfg.diasRisco||30) ? 'risco' : n > (D.cfg.diasNovo||7) ? 'antigos' : 'recentes'; }
 function pintaEspeto(){
-  const ds = devedores(), total = ds.reduce((s,d)=>s+d.total,0);
-  $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${ds.length} NOTA${ds.length===1?'':'S'}</small><b>${R(total)}</b></div>`
+  const todos = devedores(), total = todos.reduce((s,d)=>s+d.total,0), dn = D.cfg.diasNovo||7, dr = D.cfg.diasRisco||30;
+  const cont = {todos:todos.length, recentes:0, antigos:0, risco:0}; todos.forEach(d=>cont[faixaDe(dias(d.maisAntiga))]++);
+  const nomes = {todos:'TODOS', recentes:'RECENTES', antigos:'ANTIGOS', risco:'RISCO'};   // faixas: até dn dias / dn+1 a dr-1 / dr+ (⚙)
+  $('#espab').innerHTML = Object.keys(nomes).map(k=>`<button class="${k===espFaixa?'on':''}" data-fx="${k}">${nomes[k]} <small>${cont[k]}</small></button>`).join('');
+  $$('#espab [data-fx]').forEach(b=>b.onclick=()=>{ espFaixa=b.dataset.fx; pintaEspeto(); });
+  const velhos = D.cfg.espOrdem !== 'novos';
+  $('#espord').textContent = velhos ? '↓ ANTIGO 1º' : '↓ NOVO 1º';
+  const filtro = $('#espbusca').value.trim().toLowerCase(), dig = filtro.replace(/\D/g,'');
+  const ds = todos.filter(d => (espFaixa==='todos' || faixaDe(dias(d.maisAntiga))===espFaixa)
+      && (!filtro || d.cli.nome.toLowerCase().includes(filtro) || (dig.length>=3 && String(d.cli.tel||'').includes(dig))))
+    .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
+  $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
    + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga); return `
-    <div class="nota" data-nota="${d.cid}"><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
+    <div class="nota" data-nota="${d.cid}"><div class="ic"><button data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
       <div class="l"><span>${d.qtd} un · há ${n} dia${n===1?'':'s'}</span><span class="velha">${n>=30?'RISCO DE CALOTE':n>7?'COBRAR JÁ':''}</span></div>
       <div class="l"><span>desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''}</span><span class="vl">${R(d.total)}</span></div>
       <div class="acoes"><button class="zap" data-cobrar="${d.cid}">COBRAR</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
-   : `<div class="vazio-esp">Espeto vazio.<br>Ninguém devendo.</div>`);
+   : `<div class="vazio-esp">${todos.length ? 'Ninguém neste filtro.' : 'Espeto vazio.<br>Ninguém devendo.'}</div>`);
+  $$('#espeto [data-edita]').forEach(b=>b.onclick=()=>notasDo(b.dataset.edita));
+  $$('#espeto [data-apaga]').forEach(b=>b.onclick=()=>{ const cid = b.dataset.apaga, abertas = (fiados()[cid]||[]).filter(f=>f.falta>0.004);
+    if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
   $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
   $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
   $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(!e.target.closest('button')) notasDo(n.dataset.nota); });
 }
+$('#espbusca').oninput = pintaEspeto;
+$('#espord').onclick = ()=>{ D.cfg.espOrdem = D.cfg.espOrdem==='novos' ? 'velhos' : 'novos'; salvar(); pintaEspeto(); };
 // Tocar na nota: vendas fiado do cliente, cada uma com CORRIGIR e APAGAR (anotou errado)
 function notasDo(cid){
   const c = cliPor(cid), f = $('#folha'), fs = (fiados()[cid]||[]).slice().reverse();
@@ -645,11 +701,18 @@ function abreLink(tel, texto){
   window.open(u, ehCelular() ? '_blank' : 'whatsweb');
 }
 // Venda FIADO: abre o WhatsApp do cliente com "anotei R$ X, paga quando puder" + Pix. Sem telefone: não abre nada.
-function avisaFiado(c, qtd, valor){
-  if(!c || !c.tel) return;
+function textoFiado(c, qtd, valor){
+  if(!c) return '';
   let modelo = D.cfg.msgFiado || PADRAO.cfg.msgFiado;
   if(!D.cfg.chavePix) modelo = modelo.replace(/,?\s*(no|pelo)?\s*Pix:?\s*\{pix\}/i, '');   // sem chave: tira o trecho do Pix
-  abreLink(c.tel, preencher(modelo, c, {valor:v2(valor), qtd}));
+  return preencher(modelo, c, {valor:v2(valor), qtd}).trim();
+}
+function avisaFiado(c, qtd, valor){
+  if(!c || !c.tel) return;
+  const texto = textoFiado(c, qtd, valor);
+  // com o envio pelo PC ligado e conta aberta: vai pra fila do ZAP (sai do número da loja) e abre a conversa no app
+  if(ponteZap() && sb && usuario){ setTimeout(()=>responderZap({k:c.id, cli:c.id, tel:c.tel}, texto), 1000); return; }   // depois do carimbo
+  abreLink(c.tel, texto);
 }
 function abrirWhats(c, texto, depois){
   if(!c.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
@@ -738,10 +801,13 @@ function telaConfig(){
     <label>NOME QUE APARECE NO PIX</label><input id="k2" value="${esc(c.recebedor)}" placeholder="pra pessoa conferir antes de pagar">
     <div class="linha" style="margin-top:0"><div><label>PREÇO DO PÃO</label><input id="k3" inputmode="decimal" value="${v2(c.preco)}"></div>
     <div><label>CUSTO POR PÃO</label><input id="k4" inputmode="decimal" value="${v2(c.custo)}"></div></div>
+    <label>BOTÕES DE PREÇO NO VENDER (SEPARE COM /)</label><input id="k10" inputmode="decimal" value="${esc(precosBt().map(v2).join(' / '))}">
     <label>MENSAGEM DE COBRANÇA</label><textarea id="k5">${esc(c.msgCobrar)}</textarea>
     <div class="peq">{nome} {valor} {qtd} {pix} são trocados sozinhos.</div>
     <div class="linha" style="margin-top:0"><div><label>COBRAR FIADO COM (DIAS)</label><input id="k7" inputmode="numeric" value="${c.diasCobrar}"></div>
     <div><label>COBRAR DE NOVO DEPOIS DE (DIAS)</label><input id="k8" inputmode="numeric" value="${c.intervalo}"></div></div>
+    <div class="linha" style="margin-top:0"><div><label>ESPETO: RECENTE ATÉ (DIAS)</label><input id="k11" inputmode="numeric" value="${c.diasNovo}"></div>
+    <div><label>ESPETO: RISCO A PARTIR DE (DIAS)</label><input id="k12" inputmode="numeric" value="${c.diasRisco}"></div></div>
     <label>MENSAGEM NA HORA DO FIADO</label><textarea id="k9">${esc(c.msgFiado)}</textarea>
     <label>MENSAGEM DE OFERTA</label><textarea id="k6">${esc(c.msgOferta)}</textarea>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="ksalva">SALVAR</button></div></div>
@@ -764,6 +830,8 @@ function telaConfig(){
   $('#fx').onclick=()=>f.close();
   $('#ksalva').onclick=()=>{
     Object.assign(c,{chavePix:$('#k1').value.trim(), recebedor:$('#k2').value.trim(), preco:num($('#k3').value)||12.5, custo:num($('#k4').value)||0, msgCobrar:$('#k5').value, msgOferta:$('#k6').value, msgFiado:$('#k9').value,
+      precos:$('#k10').value.split('/').map(num).filter(v=>v>0).slice(0,3),
+      diasNovo:Math.max(1, parseInt($('#k11').value)||7), diasRisco:Math.max(2, parseInt($('#k12').value)||30),
       diasCobrar:Math.max(0, parseInt($('#k7').value)||0), intervalo:Math.max(1, parseInt($('#k8').value)||3)});
     salvar(); preco=c.preco; tudo(); toast('salvo');
   };
@@ -1142,7 +1210,9 @@ praExt({tipo:'oi'});
 const ponteZap = () => D.cfg.zapPonte !== false;   // padrão = pelo WhatsApp do PC (o número de teste da Meta não entrega no Brasil: erro 130497)
 function despachaZap(){
   if(!EXT || !ponteZap()) return;
-  const lista = Object.values(MSG.m).filter(m => m.entrega === 'fila').map(m => ({fila:m.id, tel:m.tel, texto:m.texto}));
+  // aviso de FIADO = texto igual ao do fiado de uma venda das últimas 24 h desse cliente → a extensão deixa ir pra cliente novo
+  const avisos = new Set(D.vendas.filter(v => v.forma==='fiado' && Date.now() - new Date(v.data) < 864e5).map(v => v.cli + '|' + textoFiado(cliPor(v.cli), v.qtd, v.qtd*v.preco)));
+  const lista = Object.values(MSG.m).filter(m => m.entrega === 'fila').map(m => ({fila:m.id, tel:m.tel, texto:m.texto, fiado:avisos.has(m.cli + '|' + m.texto)}));
   if(lista.length) praExt({tipo:'enviar', lista});
 }
 setInterval(despachaZap, 10000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
