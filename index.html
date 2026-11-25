@@ -808,7 +808,7 @@ function telaConversa(k, soRepinta){
   const lidas = c.msgs.filter(m=>m.status==='nova' && !m.sugestao).map(m=>m.id);
   if(lidas.length) marcar(lidas, 'lida');
 }
-function cresceZap(t){ t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 136) + 'px'; }
+function cresceZap(t){ t.style.height = 'auto'; const h = t.scrollHeight; if(h) t.style.height = Math.min(h, 136) + 'px'; }   // h = 0: tela ainda não desenhada, fica 1 linha
 function rodapeZap(c){
   const zf = $('#zf'), ok = String(janelaZap(c)); if(zf.dataset.j===ok) return;   // não repinta o campo: o rascunho e o teclado ficam
   zf.dataset.j = ok;
