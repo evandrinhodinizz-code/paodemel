@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ligar WhatsApp — Pão de Mel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<style>
+body{margin:0;background:#c9a77c;font-family:ui-monospace,Menlo,Consolas,monospace;color:#241710}
+main{max-width:460px;margin:0 auto;padding:24px 18px}
+.papel{background:#fbf7ee;padding:20px 18px;box-shadow:0 2px 10px #0003;border-radius:2px}
+h1{font-size:18px;margin:0 0 12px;letter-spacing:.5px}
+p,li{font-size:14px;line-height:1.5}
+button{width:100%;padding:14px;margin-top:10px;font:inherit;font-size:15px;font-weight:700;letter-spacing:1px;border:0;border-radius:2px;background:#1f7a46;color:#fff;cursor:pointer}
+button:disabled{opacity:.45}
+#log{margin-top:14px;font-size:12px;white-space:pre-wrap;background:#fff;border:1px dashed #241710;padding:10px;min-height:40px}
+.ok{color:#1f7a46}.erro{color:#b3261e}
+a{color:#241710}
+</style>
+</head>
+<body>
+<main><div class="papel">
+  <h1>LIGAR MEU WHATSAPP BUSINESS</h1>
+  <p>O número <b>continua no seu celular</b>. As conversas passam a aparecer também na aba ZAP do app.</p>
+  <ol>
+    <li>Toque no botão verde e entre com o seu Facebook.</li>
+    <li>Escolha <b>“conectar o app WhatsApp Business existente”</b> e o seu número.</li>
+    <li>No celular, o WhatsApp Business mostra um QR/código: confirme e escolha <b>compartilhar o histórico</b>.</li>
+  </ol>
+  <p class="erro"><b>Nunca</b> escolha “número novo”: isso tira o número do celular.</p>
+  <button id="ligar" disabled>CARREGANDO…</button>
+  <div id="log"></div>
+  <p><a href="./">← voltar pro app</a></p>
+</div></main>
+<script>
+const SUPA_URL = 'https://manaljeohpeiqeseqhfh.supabase.co';
+const SUPA_KEY = 'sb_publishable_cz4ZiGn0o3L3oy4scuQL4A_bWjbFpxF';   // chave pública (o segredo fica no servidor)
+const APP_ID = '1490015526374747', CONFIG_ID = '1917869042914858';
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const $log = document.getElementById('log'), $btn = document.getElementById('ligar');
+const escreve = (t, cls) => { const d = document.createElement('div'); d.textContent = t; if (cls) d.className = cls; $log.append(d); };
+
+let sessao = null, info = {}, code = null, enviado = false;
+
+// Dados do número escolhido (a Meta manda por mensagem da janela dela).
+window.addEventListener('message', ev => {
+  if (!/(^|\.)facebook\.com$/.test(new URL(ev.origin).hostname)) return;
+  let d; try { d = JSON.parse(ev.data); } catch { return; }
+  if (d.type !== 'WA_EMBEDDED_SIGNUP') return;
+  if (/^FINISH/.test(d.event)) { info = d.data || {}; escreve('Número escolhido ✓ (' + d.event + ')', 'ok'); termina(); }
+  else if (d.event === 'CANCEL') escreve('Cancelado na tela da Meta' + (d.data?.current_step ? ' (parou em: ' + d.data.current_step + ')' : '') + '.', 'erro');
+  else if (d.event === 'ERROR') escreve('Erro da Meta: ' + (d.data?.error_message || JSON.stringify(d.data)), 'erro');
+});
+
+// Quando já temos o code E o número → manda pro servidor (o code vale só 5 min).
+async function termina() {
+  if (enviado || !code || !info.phone_number_id || !info.waba_id) return;
+  enviado = true;
+  escreve('Ligando no servidor…');
+  const { data, error } = await sb.functions.invoke('ligar-zap', { body: { code, waba_id: info.waba_id, phone_number_id: info.phone_number_id } });
+  if (error) { let m = error.message; try { m = JSON.stringify(await error.context.json()); } catch {} escreve('Falhou: ' + m, 'erro'); return; }
+  escreve(data.ok ? 'PRONTO ✓ ' + (data.telefone || '') + ' ligado. Mande uma mensagem de outro número e veja na aba ZAP.' : 'Quase: veja os detalhes abaixo.', data.ok ? 'ok' : 'erro');
+  escreve(JSON.stringify(data.passos, null, 1));
+}
+
+window.fbAsyncInit = () => {
+  FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v27.0' });
+  if (sessao) { $btn.disabled = false; $btn.textContent = 'LIGAR MEU WHATSAPP'; }
+};
+
+$btn.onclick = () => {
+  $log.textContent = ''; enviado = false; code = null; info = {};
+  FB.login(r => {
+    if (r.authResponse?.code) { code = r.authResponse.code; escreve('Login na Meta ✓'); termina(); }
+    else escreve('Login na Meta não concluído.', 'erro');
+  }, {
+    config_id: CONFIG_ID, response_type: 'code', override_default_response_type: true,
+    extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+  });
+};
+
+(async () => {
+  const { data } = await sb.auth.getSession();
+  sessao = data.session;
+  if (!sessao) { $btn.textContent = 'ENTRE NO APP PRIMEIRO'; escreve('Você não está logado no app neste navegador. Abra o app, entre, e volte aqui.', 'erro'); return; }
+  const s = document.createElement('script');
+  s.src = 'https://connect.facebook.net/en_US/sdk.js'; s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+  document.head.append(s);
+})();
+</script>
+</body>
+</html>
