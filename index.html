@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#241710">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icone.svg">
@@ -159,21 +159,67 @@ dialog.folha{width:min(100vw,560px);max-width:none;height:100%;max-height:100%;m
 /* WhatsApp: conversas */
 .hb{position:relative}
 .selo-n{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--verm);color:var(--papel);font:600 10px/17px var(--mono);font-style:normal;text-align:center}
-.conv{display:flex;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit}
-.conv .nm{display:flex;justify-content:space-between;gap:8px}.conv .nm b{font-family:Archivo;font-size:15px}.conv .nm small{font-size:10.5px;color:#8a8a8a;white-space:nowrap}
-.conv .ult{font-size:12px;color:#6b6b6b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.conv .selo-n{position:static;flex:none}
-.chat{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.bal{max-width:86%;align-self:flex-start;background:var(--papel);padding:9px 11px;box-shadow:var(--sombra);font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
-.bal.enviada{align-self:flex-end;background:#f4ead8}
-.bal time{display:block;font-size:10px;color:#8a8a8a;margin-top:3px}
-.bal time .falhou{color:#b3261e}
-.resp{position:sticky;bottom:-20px;background:var(--papel);padding:8px 0 4px;margin-top:10px}
-.resp textarea{min-height:44px;max-height:140px;resize:none}
-.resp .aviso{font-size:12px;margin:0 0 6px;color:#8a5a00}
-.sug{margin-top:9px;padding-top:9px;border-top:1px dashed #24171059;white-space:normal}
-.sug .acoes{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.sug .acoes button{font-size:10px;letter-spacing:.6px}
+/* WhatsApp (aba ZAP): o mais parecido possível com o WhatsApp de verdade, pra não confundir */
+dialog.folha.zap{padding:0;background:#efeae2;overflow:hidden;font:14.2px/19px system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;color:#111b21;height:100dvh;max-height:100dvh}
+dialog.folha.zap[open]{display:flex;flex-direction:column}
+.zb{flex:none;display:flex;align-items:center;gap:4px;background:#008069;color:#fff;padding:calc(8px + env(safe-area-inset-top)) 6px 8px 4px;min-height:58px}
+.zb .zt{flex:1;font-size:20px;font-weight:600;padding-left:4px}
+.zi{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:50%}
+.zi:active{background:#ffffff2e}
+.zi svg{width:24px;height:24px;fill:currentColor}
+.zh{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;padding-left:8px}
+.zh b{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zh small{font-size:12.5px;opacity:.85}
+.av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:17px;font-weight:600}
+.zl{flex:1;overflow-y:auto;background:#fff;overscroll-behavior:contain}
+.zc{display:flex;align-items:center;gap:14px;width:100%;padding:0 0 0 14px;text-align:left}
+.zc:active{background:#f0f2f5}
+.zc .av{width:50px;height:50px;font-size:20px}
+.zcx{flex:1;min-width:0;padding:12px 14px 12px 0;border-bottom:1px solid #e9edef;display:flex;flex-direction:column;gap:3px}
+.zl1,.zl2{display:flex;align-items:center;gap:6px}
+.zl1 b{flex:1;min-width:0;font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zl1 time{font-size:12px;color:#667781}.zl1 time.nv{color:#1fa855;font-weight:600}
+.zu{flex:1;min-width:0;display:flex;align-items:center;gap:3px;font-size:14.5px;color:#667781;white-space:nowrap;overflow:hidden}
+.zu span{overflow:hidden;text-overflow:ellipsis}
+.zn{flex:none;font-style:normal;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#25d366;color:#fff;font-size:12px;font-weight:600;line-height:21px;text-align:center}
+.zv{flex:none;font-style:normal;font-size:11px;font-weight:600;color:#8a5a00;background:#fff1c2;border-radius:9px;padding:1px 7px}
+.zvz{margin:0;padding:40px 30px;text-align:center;color:#667781}
+.zm{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:6px 14px 10px;display:flex;flex-direction:column}
+.zd{align-self:center;margin:10px 0 4px;background:#fff;color:#54656f;font-size:12.5px;line-height:16px;padding:5px 12px;border-radius:8px;box-shadow:0 1px .5px #0b141a21}
+.b{position:relative;max-width:82%;margin-top:2px;padding:6px 7px 8px 9px;border-radius:8px;box-shadow:0 1px .5px #0b141a21;overflow-wrap:anywhere}
+.b.ele{align-self:flex-start;background:#fff}
+.b.eu{align-self:flex-end;background:#d9fdd3}
+.b.cd{margin-top:9px}
+.b.ele.cd{border-top-left-radius:0}
+.b.eu.cd{border-top-right-radius:0}
+.b.cd::before{content:"";position:absolute;top:0;width:8px;height:13px;background:inherit}
+.b.ele.cd::before{left:-8px;clip-path:polygon(0 0,100% 0,100% 100%)}
+.b.eu.cd::before{right:-8px;clip-path:polygon(0 0,100% 0,0 100%)}
+.tx{white-space:pre-wrap}
+.esp{display:inline-block;width:44px}.eu .esp{width:64px}
+.mt{position:absolute;right:7px;bottom:3px;display:flex;align-items:center;gap:3px;font-size:11px;line-height:15px;color:#667781}
+.tq{display:inline-flex;color:#8696a0}.tq.azul{color:#53bdeb}
+.tq svg{width:16px;height:11px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tq .rel{width:13px;height:13px}
+.tq-x{flex:none;display:inline-block;width:15px;height:15px;border-radius:50%;background:#ea0038;color:#fff;font-size:10.5px;font-style:normal;font-weight:700;line-height:15px;text-align:center}
+button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -3px -4px 0}
+.zsg{align-self:flex-start;max-width:82%;margin:4px 0 2px;background:#fffaf0;border:1px solid #efe1bf;border-radius:8px;padding:6px 8px;font-size:13px;color:#54656f}
+.zsg b{color:#111b21;font-weight:600}
+.zsa{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.zsa button{font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:14px;background:#fff;border:1px solid #d1d7db;color:#008069}
+.zsa button:active{background:#e7fce3}
+.zsa .nao{color:#667781;border-color:transparent;background:none}
+.zsg.ok2{border:0;background:none;color:#1fa855;font-weight:600;font-size:12px;padding:2px 4px;margin:2px 0 0}
+.zf{flex:none;display:flex;align-items:flex-end;gap:6px;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.zin{flex:1;min-width:0;display:flex;align-items:center;background:#fff;border-radius:24px;padding:0 16px;min-height:48px;box-shadow:0 1px .5px #0b141a21}
+.zin textarea{display:block;border:0;border-radius:0;padding:13px 0;margin:0;background:none;font:16px/22px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#111b21;height:48px;min-height:0;max-height:136px;resize:none;outline:0;overflow-y:auto}
+.zin textarea::placeholder{color:#8696a0}
+.zs{flex:none;width:48px;height:48px;border-radius:50%;background:#00a884;display:grid;place-items:center;box-shadow:0 1px 2px #0b141a33}
+.zs svg{width:22px;height:22px;fill:#fff;margin-left:3px}
+.zs:active{filter:brightness(.9)}
+.z24{flex:1;background:#fff8d6;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:18px;color:#54656f;text-align:center;box-shadow:0 1px .5px #0b141a21}
+.z24 p{margin:0 0 8px}
+.zbt{width:100%;padding:11px;border-radius:22px;background:#00a884;color:#fff;font-weight:600;font-size:13px;letter-spacing:.3px}
 
 @media(min-width:1000px){
   .app{max-width:none}
@@ -573,7 +619,7 @@ function oferecer(cid){
 // ===== Folha: Clientes =====
 function telaClientes(){
   const dv = {}; devedores().forEach(d=>dv[d.cid]=d.total);
-  const lista = D.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)), f = $('#folha');
+  const lista = D.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)), f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
   f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Clientes (${lista.length})</h3>
     <div class="ficha"><label style="margin-top:0">NOVIDADE PRA OFERECER (VAI NA MENSAGEM)</label>
     <input id="pn" value="${esc(D.cfg.produtoNovo)}" placeholder="ex.: kit de Natal com 6 pães de mel">
@@ -682,64 +728,124 @@ function pintaZap(){
   ['#zapN','#zapN2'].forEach(s=>{ const b = $(s); b.textContent = n; b.classList.toggle('oculto', !n); });
   if($('#folha').open && zapTela) zapTela==='lista' ? telaZap() : telaConversa(zapTela, true);
 }
+// ===== Aba ZAP com cara de WhatsApp (lista + conversa) =====
+const ZI = {
+  v1:'<svg viewBox="0 0 16 11"><path d="M1.8 5.9l2.8 2.8 6-7.1"/></svg>',
+  v2:'<svg viewBox="0 0 16 11"><path d="M1.8 5.9l2.8 2.8 6-7.1M7.2 8.1l.6.6 6-7.1"/></svg>',
+  rel:'<svg class="rel" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.3 1.5"/></svg>',
+  env:'<svg viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6v6.5L15 12 3.4 13.9z"/></svg>',
+  volta:'<svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>',
+  sai:'<svg viewBox="0 0 24 24"><path d="M14 3v2h3.6l-9.8 9.8 1.4 1.4L19 6.4V10h2V3zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2z"/></svg>'
+};
+function tique(m, naLista){
+  if(m.pend) return `<i class="tq">${ZI.rel}</i>`;
+  if(m.lado!=='enviada' || !m.entrega) return '';
+  const e = m.entrega;
+  if(e.startsWith('failed')) return naLista ? '<i class="tq-x">!</i>' : `<button class="tq-x" data-falha="${esc(e.slice(7))}" aria-label="não chegou">!</button>`;
+  return e==='read' ? `<i class="tq azul">${ZI.v2}</i>` : e==='delivered' ? `<i class="tq">${ZI.v2}</i>` : `<i class="tq">${ZI.v1}</i>`;
+}
+function diaZap(iso){ const d = new Date(iso), h = new Date(), o = new Date(); o.setDate(h.getDate()-1);
+  return d.toDateString()===h.toDateString() ? 'HOJE' : d.toDateString()===o.toDateString() ? 'ONTEM' : d.toLocaleDateString('pt-BR'); }
+function horaZap(iso){ return new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function quandoLista(iso){ const x = diaZap(iso); return x==='HOJE' ? horaZap(iso) : x==='ONTEM' ? 'Ontem' : x; }
+const COR_AV = ['#5f8f86','#8d7a62','#7a6c94','#5f7e96','#946b78','#7c8f5f','#a07c4a'];
+function avatar(t){ const s = (t||'?').trim(); let h = 0; for(const ch of s) h = (h*31 + ch.charCodeAt(0))|0;
+  const ini = (s.match(/[A-Za-zÀ-ÿ0-9]/)||['?'])[0].toUpperCase();
+  return `<span class="av" style="background:${COR_AV[Math.abs(h)%COR_AV.length]}">${esc(ini)}</span>`; }
+
 function telaZap(){
   zapTela = 'lista';
   const f = $('#folha'), cs = conversas();
-  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>WhatsApp</h3>
-    ${!usuario ? '<div class="ficha peq">Entre na conta pra ver as mensagens.</div>'
-      : !cs.length ? '<div class="ficha peq">Nenhuma mensagem ainda. Quando o número estiver ligado na Meta, as conversas aparecem aqui sozinhas e o cliente novo entra na lista de clientes.</div>' : ''}
-    ${cs.map(c=>`<button class="ficha conv" data-k="${esc(c.k)}"><div style="flex:1;min-width:0">
-      <div class="nm"><b>${esc(c.titulo)}</b><small>${quando(c.ult.data)}</small></div>
-      <div class="ult">${c.ult.lado==='enviada'?'você: ':''}${esc(c.ult.texto)}</div></div>
-      ${c.sug?'<span class="ok">VENDA?</span>':''}${c.novas?`<i class="selo-n">${c.novas}</i>`:''}</button>`).join('')}`;
-  $('#fx').onclick=()=>f.close();
+  f.classList.add('zap'); delete f.dataset.k;
+  f.innerHTML = `<div class="zb"><button class="zi" id="fx" aria-label="voltar">${ZI.volta}</button><b class="zt">WhatsApp</b></div>
+    <div class="zl">${!usuario ? '<p class="zvz">Entre na conta pra ver as mensagens.</p>'
+      : !cs.length ? '<p class="zvz">Nenhuma mensagem ainda. Quando o número estiver ligado, as conversas aparecem aqui sozinhas e o cliente novo entra na lista de clientes.</p>' : ''}
+    ${cs.map(c=>{ const u = c.ult; return `<button class="zc" data-k="${esc(c.k)}">${avatar(c.titulo)}<span class="zcx">
+      <span class="zl1"><b>${esc(c.titulo)}</b><time${c.novas?' class="nv"':''}>${quandoLista(u.data)}</time></span>
+      <span class="zl2"><span class="zu">${tique(u, true)}<span>${esc(u.texto||'')}</span></span>${c.sug?'<em class="zv">venda?</em>':''}${c.novas?`<i class="zn">${c.novas}</i>`:''}</span>
+      </span></button>`; }).join('')}</div>`;
+  $('#fx').onclick = ()=>f.close();
   f.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>telaConversa(b.dataset.k));
   if(!f.open) f.showModal();
+}
+function sugZap(m){
+  if(m.status==='vendida') return '<div class="zsg ok2">✓ venda anotada</div>';
+  if(!(m.sugestao && m.status==='nova')) return '';
+  return `<div class="zsg">Venda? <b>${m.sugestao.qtd} pão${m.sugestao.qtd>1?'es':''} · ${R(m.sugestao.valor)}</b>
+    <div class="zsa">${['pix','dinheiro','cartao','fiado'].map(x=>`<button data-v="${esc(m.id)}" data-f="${x}">${NOME_F[x]}</button>`).join('')}<button class="nao" data-ig="${esc(m.id)}">não é venda</button></div></div>`;
+}
+function baloes(c){
+  let dia = '', ant = null, h = '';
+  for(const m of c.msgs.slice(-200).concat(PEND_ZAP.filter(p=>p.k===c.k))){
+    const d = diaZap(m.data); if(d!==dia){ dia = d; ant = null; h += `<div class="zd">${d}</div>`; }
+    const eu = m.lado==='enviada', cauda = ant!==m.lado; ant = m.lado;
+    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}"><span class="tx">${esc(m.texto||'')}</span><span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
+  }
+  return h;
 }
 function telaConversa(k, soRepinta){
   const c = conversas().find(x=>x.k===k); if(!c) return telaZap();
   zapTela = k;
-  const f = $('#folha'), noFim = !soRepinta || f.scrollHeight - f.scrollTop - f.clientHeight < 80;
-  const sug = m => m.status==='vendida' ? '<div class="sug"><span class="ok">VENDA ANOTADA</span></div>'
-    : !(m.sugestao && m.status==='nova') ? ''
-    : `<div class="sug"><b>VENDA?</b> ${m.sugestao.qtd} pão${m.sugestao.qtd>1?'es':''} · ${R(m.sugestao.valor)}
-       <div class="acoes">${['pix','dinheiro','cartao','fiado'].map(x=>`<button data-v="${esc(m.id)}" data-f="${x}">${NOME_F[x]}</button>`).join('')}</div>
-       <button class="bt" style="width:100%;margin-top:6px" data-ig="${esc(m.id)}">NÃO É VENDA</button></div>`;
-  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">VOLTAR</button><h3>${esc(c.titulo)}</h3>
-    <div class="peq">${telBonito(c.tel)} · toque em PIX/DINHEIRO/CARTÃO/FIADO pra anotar a venda com a data da mensagem</div>
-    <div class="chat">${c.msgs.slice(-200).map(m=>`<div class="bal ${m.lado}">${esc(m.texto)}<time>${quando(m.data)}${m.lado==='enviada'?entregaTxt(m.entrega):''}</time>${sug(m)}</div>`).join('')}</div>
-    <div class="resp">${janelaZap(c) ? '' : '<p class="aviso">Passou de 24 h desde a última mensagem do cliente: a Meta só deixa mandar modelo pago. Use o botão abaixo pra responder pelo seu WhatsApp.</p>'}
-      <textarea id="zt" placeholder="escreva a resposta" ${janelaZap(c)?'':'disabled'}></textarea>
-      <div class="linha"><button class="bt cheio" id="ze" ${janelaZap(c)?'':'disabled'}>ENVIAR</button><button class="bt" id="zr">PELO MEU WHATSAPP</button></div></div>`;
-  $('#fx').onclick=()=>telaZap();
-  $('#zr').onclick=()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, $('#zt').value);
-  const zt = $('#zt'); zt.value = RASC[k] || ''; zt.oninput = ()=>{ RASC[k] = zt.value; };
-  if(soRepinta && focoZap) { zt.focus(); zt.setSelectionRange(zt.value.length, zt.value.length); }
-  zt.onfocus = ()=>{ focoZap = true; }; zt.onblur = ()=>{ focoZap = false; };
-  $('#ze').onclick = ()=>responderZap(c, zt.value);
-  f.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>anotar(b.dataset.v, b.dataset.f));
-  f.querySelectorAll('[data-ig]').forEach(b=>b.onclick=()=>marcar([b.dataset.ig], 'ignorada'));
+  const f = $('#folha'), mesmo = soRepinta && f.dataset.k===k && $('#zm');
+  if(!mesmo){
+    f.classList.add('zap'); f.dataset.k = k;
+    f.innerHTML = `<div class="zb"><button class="zi" id="fx" aria-label="voltar">${ZI.volta}</button>${avatar(c.titulo)}
+      <span class="zh"><b>${esc(c.titulo)}</b><small>${telBonito(c.tel)}</small></span>
+      <button class="zi" id="zr" title="abrir no meu WhatsApp" aria-label="abrir no meu WhatsApp">${ZI.sai}</button></div>
+      <div class="zm" id="zm"></div><div class="zf" id="zf"></div>`;
+    $('#fx').onclick = ()=>telaZap();
+    $('#zr').onclick = ()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, RASC[k] || '');
+    $('#zm').onclick = e=>{ const b = e.target.closest('button'); if(!b) return;
+      if(b.dataset.v) anotar(b.dataset.v, b.dataset.f);
+      else if(b.dataset.ig) marcar([b.dataset.ig], 'ignorada');
+      else if(b.dataset.falha) toast('não chegou: ' + b.dataset.falha); };
+  }
+  const zm = $('#zm'), noFim = !mesmo || zm.scrollHeight - zm.scrollTop - zm.clientHeight < 80;
+  const html = baloes(c); if(zm._h!==html){ zm.innerHTML = html; zm._h = html; }   // nada mudou = não redesenha (a cada 1 min)
+  rodapeZap(c);
   if(!f.open) f.showModal();
-  if(noFim) f.scrollTop = f.scrollHeight;
+  if(noFim) zm.scrollTop = zm.scrollHeight;
   const lidas = c.msgs.filter(m=>m.status==='nova' && !m.sugestao).map(m=>m.id);
   if(lidas.length) marcar(lidas, 'lida');
 }
+function cresceZap(t){ t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 136) + 'px'; }
+function rodapeZap(c){
+  const zf = $('#zf'), ok = String(janelaZap(c)); if(zf.dataset.j===ok) return;   // não repinta o campo: o rascunho e o teclado ficam
+  zf.dataset.j = ok;
+  if(ok!=='true'){
+    zf.innerHTML = `<div class="z24"><p>Passaram 24 h desde a última mensagem do cliente. O WhatsApp só deixa responder por aqui depois que ele mandar outra mensagem.</p><button class="zbt" id="zr2">PELO MEU WHATSAPP</button></div>`;
+    $('#zr2').onclick = ()=>$('#zr').click(); return;
+  }
+  zf.innerHTML = `<label class="zin"><textarea id="zt" rows="1" placeholder="Mensagem"></textarea></label><button class="zs" id="ze" aria-label="enviar">${ZI.env}</button>`;
+  const zt = $('#zt'), ze = $('#ze'); zt.value = RASC[c.k] || ''; cresceZap(zt);
+  if(focoZap) zt.focus();
+  zt.oninput = ()=>{ RASC[c.k] = zt.value; cresceZap(zt); };
+  zt.onfocus = ()=>{ focoZap = true; }; zt.onblur = ()=>{ focoZap = false; };
+  zt.onkeydown = e=>{ if(e.key==='Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches){ e.preventDefault(); responderZap(c, zt.value); } };
+  ze.onpointerdown = e=>e.preventDefault();   // tocar no enviar não fecha o teclado
+  ze.onclick = ()=>responderZap(c, zt.value);
+}
 // ===== Responder pelo app (função "enviar-zap": a mensagem sai do número ligado na Meta, sem abrir o WhatsApp) =====
-const RASC = {}; let focoZap = false, enviandoZap = false;
+const RASC = {}, PEND_ZAP = []; let focoZap = false;
 function janelaZap(c){ const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
-function entregaTxt(e){ if(!e) return ''; if(e.startsWith('failed')) return ' · <b class="falhou">não chegou ('+esc(e.slice(7))+')</b>';
-  return ' · ' + ({sent:'✓', delivered:'✓✓', read:'✓✓ lida'}[e] || esc(e)); }
 async function responderZap(c, texto){
-  texto = (texto||'').trim(); if(!texto || enviandoZap) return;
+  texto = (texto||'').trim(); if(!texto) return;
   if(!sb || !usuario) return toast('entre na conta primeiro');
-  enviandoZap = true; const b = $('#ze'); if(b){ b.disabled = true; b.textContent = 'ENVIANDO…'; }
+  const p = {k:c.k, texto, data:new Date().toISOString(), lado:'enviada', pend:true}; PEND_ZAP.push(p);   // aparece na hora com o reloginho, como no WhatsApp
+  delete RASC[c.k]; const zt = $('#zt'); if(zt){ zt.value = ''; cresceZap(zt); }
+  telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
   try{
     const {data, error} = await sb.functions.invoke('enviar-zap', {body:{tel:c.tel, texto}});
     if(error){ let msg = error.message; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
-    MSG.m[data.id] = {id:data.id, tel:data.para, nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:new Date().toISOString(), status:'lida', entrega:'sent', atualizado:''};
-    guardaMsg(); delete RASC[c.k]; if(navigator.vibrate) navigator.vibrate(18); toast('enviada');
-  }catch(e){ toast('não enviou: ' + e.message); }
-  finally{ enviandoZap = false; if($('#folha').open && zapTela===c.k) telaConversa(c.k, true); sincronizar(); }
+    MSG.m[data.id] = {id:data.id, tel:data.para, nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:p.data, status:'lida', entrega:'sent', atualizado:''};
+    guardaMsg(); if(navigator.vibrate) navigator.vibrate(18);
+  }catch(e){
+    toast('não enviou: ' + e.message);
+    if(!RASC[c.k]){ RASC[c.k] = texto; const z = $('#zt'); if(z && zapTela===c.k){ z.value = texto; cresceZap(z); } }   // o texto volta pro campo
+  }finally{
+    PEND_ZAP.splice(PEND_ZAP.indexOf(p), 1);
+    if($('#folha').open && zapTela===c.k) telaConversa(c.k, true); sincronizar();
+  }
 }
 function marcar(ids, st){
   ids.forEach(i=>{ if(MSG.m[i]){ MSG.m[i].status = st; MSG.pend[i] = st; } });
@@ -760,7 +866,7 @@ async function anotar(mid, forma){
   toast(`${forma==='fiado'?'fiado anotado':'venda anotada'} · ${R(m.sugestao.valor)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==vid); salvar(); marcar([mid, ...irmas],'nova'); tudo(); toast('desfeito'); });
 }
 $('#btZap').onclick = $('#navZap').onclick = ()=>{ telaZap(); if(usuario) sincronizar(); };
-$('#folha').addEventListener('close', ()=>{ zapTela = null; });
+$('#folha').addEventListener('close', ()=>{ zapTela = null; const f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k; });
 
 // ===== Teclado no PC =====
 document.addEventListener('keydown',e=>{
