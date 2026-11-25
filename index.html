@@ -270,6 +270,7 @@ const PADRAO = {
   cfg: {
     preco: 12.5, custo: 3.34, chavePix: '', recebedor: '', ultimoBackup: null,
     msgCobrar: 'Oi {nome}! Tudo bem? Passando pra lembrar do pão de mel que ficou pendente: R$ {valor}. Pode pagar no Pix: {pix}. Obrigado!',
+    msgFiado: 'Oi {nome}! Anotei R$ {valor} do pão de mel ({qtd} un). Paga quando puder, no Pix: {pix}. Obrigado!',
     msgOferta: 'Oi {nome}! Tudo bem? Chegou novidade: {produto}. Quer que eu separe pra você?',
     produtoNovo: '',
     diasCobrar: 7,      // fiado com X dias ou mais entra no "COBRAR HOJE"
@@ -389,6 +390,7 @@ function vender(f){
   ocupado = true;
   const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
   D.vendas.push(venda); salvar();
+  if(f==='fiado') avisaFiado(cliPor(sel), q, q*preco);   // abre já (dentro do toque, senão o navegador bloqueia)
   const c=$('#carimbo'), cp=$('#cupom');
   c.textContent = f==='fiado' ? 'FIADO' : 'PAGO · '+NOME_F[f]; c.style.color = COR_F[f];
   c.classList.remove('bate'); void c.offsetWidth; c.classList.add('bate');
@@ -500,6 +502,13 @@ function linkWhats(tel, texto){
   return (ehCelular() ? 'https://wa.me/'+tel+'?text=' : 'https://web.whatsapp.com/send?phone='+tel+'&text=') + encodeURIComponent(texto);
 }
 const abreLink = (tel, texto) => window.open(linkWhats(tel, texto), ehCelular() ? '_blank' : 'whatsweb');
+// Venda FIADO: abre o WhatsApp do cliente com "anotei R$ X, paga quando puder" + Pix. Sem telefone: não abre nada.
+function avisaFiado(c, qtd, valor){
+  if(!c || !c.tel) return;
+  let modelo = D.cfg.msgFiado || PADRAO.cfg.msgFiado;
+  if(!D.cfg.chavePix) modelo = modelo.replace(/,?\s*(no|pelo)?\s*Pix:?\s*\{pix\}/i, '');   // sem chave: tira o trecho do Pix
+  abreLink(c.tel, preencher(modelo, c, {valor:v2(valor), qtd}));
+}
 function abrirWhats(c, texto, depois){
   if(!c.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
   const dlg = $('#dlg');
@@ -591,6 +600,7 @@ function telaConfig(){
     <div class="peq">{nome} {valor} {qtd} {pix} são trocados sozinhos.</div>
     <div class="linha" style="margin-top:0"><div><label>COBRAR FIADO COM (DIAS)</label><input id="k7" inputmode="numeric" value="${c.diasCobrar}"></div>
     <div><label>COBRAR DE NOVO DEPOIS DE (DIAS)</label><input id="k8" inputmode="numeric" value="${c.intervalo}"></div></div>
+    <label>MENSAGEM NA HORA DO FIADO</label><textarea id="k9">${esc(c.msgFiado)}</textarea>
     <label>MENSAGEM DE OFERTA</label><textarea id="k6">${esc(c.msgOferta)}</textarea>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="ksalva">SALVAR</button></div></div>
     ${sb ? `<div class="ficha"><b style="font-family:Archivo">Conta (nuvem)</b>
@@ -603,7 +613,7 @@ function telaConfig(){
     <div class="peq" style="margin-top:6px">${D.clientes.length} clientes · ${D.vendas.length} vendas · ${D.pagamentos.length} pagamentos de fiado</div></div>`;
   $('#fx').onclick=()=>f.close();
   $('#ksalva').onclick=()=>{
-    Object.assign(c,{chavePix:$('#k1').value.trim(), recebedor:$('#k2').value.trim(), preco:num($('#k3').value)||12.5, custo:num($('#k4').value)||0, msgCobrar:$('#k5').value, msgOferta:$('#k6').value,
+    Object.assign(c,{chavePix:$('#k1').value.trim(), recebedor:$('#k2').value.trim(), preco:num($('#k3').value)||12.5, custo:num($('#k4').value)||0, msgCobrar:$('#k5').value, msgOferta:$('#k6').value, msgFiado:$('#k9').value,
       diasCobrar:Math.max(0, parseInt($('#k7').value)||0), intervalo:Math.max(1, parseInt($('#k8').value)||3)});
     salvar(); preco=c.preco; tudo(); toast('salvo');
   };
