@@ -167,6 +167,10 @@ dialog.folha{width:min(100vw,560px);max-width:none;height:100%;max-height:100%;m
 .bal{max-width:86%;align-self:flex-start;background:var(--papel);padding:9px 11px;box-shadow:var(--sombra);font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
 .bal.enviada{align-self:flex-end;background:#f4ead8}
 .bal time{display:block;font-size:10px;color:#8a8a8a;margin-top:3px}
+.bal time .falhou{color:#b3261e}
+.resp{position:sticky;bottom:-20px;background:var(--papel);padding:8px 0 4px;margin-top:10px}
+.resp textarea{min-height:44px;max-height:140px;resize:none}
+.resp .aviso{font-size:12px;margin:0 0 6px;color:#8a5a00}
 .sug{margin-top:9px;padding-top:9px;border-top:1px dashed #24171059;white-space:normal}
 .sug .acoes{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .sug .acoes button{font-size:10px;letter-spacing:.6px}
@@ -655,7 +659,7 @@ async function enviarMsgs(){
 async function baixarMsgs(){
   const desde = MSG.ate ? new Date(new Date(MSG.ate) - 6e5).toISOString() : null;
   for(let de = 0; ; de += 1000){
-    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,texto,data,sugestao,status,atualizado');
+    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,texto,data,sugestao,status,atualizado,entrega');
     if(desde) qy = qy.gt('atualizado', desde);
     const {data, error} = await qy.order('atualizado').order('id').range(de, de + 999);
     if(error){ if(/mensagens/.test(error.message)) return console.warn('zap:', error.message); throw error; }   // tabela ainda não criada: não trava o resto
@@ -703,16 +707,39 @@ function telaConversa(k, soRepinta){
        <button class="bt" style="width:100%;margin-top:6px" data-ig="${esc(m.id)}">NÃO É VENDA</button></div>`;
   f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">VOLTAR</button><h3>${esc(c.titulo)}</h3>
     <div class="peq">${telBonito(c.tel)} · toque em PIX/DINHEIRO/CARTÃO/FIADO pra anotar a venda com a data da mensagem</div>
-    <div class="chat">${c.msgs.slice(-200).map(m=>`<div class="bal ${m.lado}">${esc(m.texto)}<time>${quando(m.data)}</time>${sug(m)}</div>`).join('')}</div>
-    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="zr">RESPONDER NO WHATSAPP</button></div>`;
+    <div class="chat">${c.msgs.slice(-200).map(m=>`<div class="bal ${m.lado}">${esc(m.texto)}<time>${quando(m.data)}${m.lado==='enviada'?entregaTxt(m.entrega):''}</time>${sug(m)}</div>`).join('')}</div>
+    <div class="resp">${janelaZap(c) ? '' : '<p class="aviso">Passou de 24 h desde a última mensagem do cliente: a Meta só deixa mandar modelo pago. Use o botão abaixo pra responder pelo seu WhatsApp.</p>'}
+      <textarea id="zt" placeholder="escreva a resposta" ${janelaZap(c)?'':'disabled'}></textarea>
+      <div class="linha"><button class="bt cheio" id="ze" ${janelaZap(c)?'':'disabled'}>ENVIAR</button><button class="bt" id="zr">PELO MEU WHATSAPP</button></div></div>`;
   $('#fx').onclick=()=>telaZap();
-  $('#zr').onclick=()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, '');
+  $('#zr').onclick=()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, $('#zt').value);
+  const zt = $('#zt'); zt.value = RASC[k] || ''; zt.oninput = ()=>{ RASC[k] = zt.value; };
+  if(soRepinta && focoZap) { zt.focus(); zt.setSelectionRange(zt.value.length, zt.value.length); }
+  zt.onfocus = ()=>{ focoZap = true; }; zt.onblur = ()=>{ focoZap = false; };
+  $('#ze').onclick = ()=>responderZap(c, zt.value);
   f.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>anotar(b.dataset.v, b.dataset.f));
   f.querySelectorAll('[data-ig]').forEach(b=>b.onclick=()=>marcar([b.dataset.ig], 'ignorada'));
   if(!f.open) f.showModal();
   if(noFim) f.scrollTop = f.scrollHeight;
   const lidas = c.msgs.filter(m=>m.status==='nova' && !m.sugestao).map(m=>m.id);
   if(lidas.length) marcar(lidas, 'lida');
+}
+// ===== Responder pelo app (função "enviar-zap": a mensagem sai do número ligado na Meta, sem abrir o WhatsApp) =====
+const RASC = {}; let focoZap = false, enviandoZap = false;
+function janelaZap(c){ const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
+function entregaTxt(e){ if(!e) return ''; if(e.startsWith('failed')) return ' · <b class="falhou">não chegou ('+esc(e.slice(7))+')</b>';
+  return ' · ' + ({sent:'✓', delivered:'✓✓', read:'✓✓ lida'}[e] || esc(e)); }
+async function responderZap(c, texto){
+  texto = (texto||'').trim(); if(!texto || enviandoZap) return;
+  if(!sb || !usuario) return toast('entre na conta primeiro');
+  enviandoZap = true; const b = $('#ze'); if(b){ b.disabled = true; b.textContent = 'ENVIANDO…'; }
+  try{
+    const {data, error} = await sb.functions.invoke('enviar-zap', {body:{tel:c.tel, texto}});
+    if(error){ let msg = error.message; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
+    MSG.m[data.id] = {id:data.id, tel:data.para, nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:new Date().toISOString(), status:'lida', entrega:'sent', atualizado:''};
+    guardaMsg(); delete RASC[c.k]; if(navigator.vibrate) navigator.vibrate(18); toast('enviada');
+  }catch(e){ toast('não enviou: ' + e.message); }
+  finally{ enviandoZap = false; if($('#folha').open && zapTela===c.k) telaConversa(c.k, true); sincronizar(); }
 }
 function marcar(ids, st){
   ids.forEach(i=>{ if(MSG.m[i]){ MSG.m[i].status = st; MSG.pend[i] = st; } });
