@@ -311,6 +311,9 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
 
 <script>
 'use strict';
+// ===== Modo teste (index.html?teste=1): dados de exemplo, nada vai pra nuvem nem fica guardado no aparelho =====
+const TESTE = new URLSearchParams(location.search).get('teste') === '1';
+const localStorage = TESTE ? (() => { const m = new Map(); return {getItem:k => m.has(k) ? m.get(k) : null, setItem:(k, v) => m.set(k, String(v)), removeItem:k => m.delete(k)}; })() : window.localStorage;
 // ===== Dados (mesma chave do app antigo: nada se perde) =====
 const CHAVE = 'paodemel_v1';
 const PADRAO = {
@@ -883,7 +886,7 @@ const SUPA_URL = 'https://manaljeohpeiqeseqhfh.supabase.co';   // projeto paodem
 const SUPA_KEY = 'sb_publishable_cz4ZiGn0o3L3oy4scuQL4A_bWjbFpxF';   // chave pública (NUNCA a service_role / secret)
 const K_SINC = 'paodemel_sinc', K_DONO = 'paodemel_dono', K_ANTES = 'paodemel_v1_antes_da_nuvem';
 const TABS = {clientes:['id','nome','tel'], vendas:['id','data','cli','qtd','preco','forma'], pagamentos:['id','data','cli','valor','forma']};
-const sb = (SUPA_URL && window.supabase) ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+const sb = (SUPA_URL && window.supabase) ? window.supabase.createClient(SUPA_URL, SUPA_KEY, TESTE ? {auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false}} : undefined) : null;
 let usuario = null, rodando = null, deNovo = false, tEnvio = 0, cfgLocalVence = false, estadoNuvem = sb ? 'off' : '', erroNuvem = '';
 
 const copia = o => JSON.parse(JSON.stringify(o));
@@ -949,7 +952,7 @@ async function baixar(){
 }
 function marcaNuvem(st, msg){ estadoNuvem = st; erroNuvem = msg || ''; const n = $('#nuvem'); if(n) n.className = 'nuvem ' + st; }
 async function sincronizar(){
-  if(!sb || !usuario) return;
+  if(!sb || !usuario || TESTE) return;
   if(rodando){ deNovo = true; return rodando; }
   rodando = (async () => {
     const antes = JSON.stringify(D);
@@ -1022,8 +1025,30 @@ async function iniciarNuvem(){
 $('#qr').innerHTML=[1,1,1,0,1,0,1,1,1,1,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,1,0,1,0,1,0,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1].map(v=>`<i class="${v?'':'v'}"></i>`).join('');
 $('#data').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','').toUpperCase();
 function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaMes(); }
+// Modo teste: 12 clientes + ~200 mensagens de exemplo; ENVIAR finge que mandou (3 em 3 falha, pra ver o "!").
+function carregaTeste(){
+  const nomes = ['Ana Souza','Bruno Lima','Carla Mendes','Diego Rocha','Elaine Costa','Fábio Nunes','Gabi Torres','Hugo Prado','Íris Melo','João Pedro','Kátia Reis','Lucas Dias'];
+  const agora = Date.now(), H = 36e5, txt = ['Oi! Tem pão de mel hoje?','Quero 2','Manda 3 por favor','Fiz o Pix 😊','Valeu!','Pode separar pra amanhã?','Quanto tá?','Chegou aqui, obrigado','Paga dia 10 ok?','Tem de chocolate branco?'];
+  D = copia(PADRAO); D.cfg.chavePix = 'teste@exemplo.com';
+  nomes.forEach((n, i) => D.clientes.push({id:'tc' + i, nome:n, tel:'5541999' + String(10000 + i).slice(1)}));
+  D.clientes.forEach((c, i) => { if(i % 3 === 0) D.vendas.push({id:'tv' + i, data:new Date(agora - (i + 8) * 864e5).toISOString(), cli:c.id, qtd:2, preco:12.5, forma:'fiado'}); });
+  MSG = MSG_VAZIO();
+  for(let i = 0; i < 200; i++){
+    const c = D.clientes[i % 12], rec = i % 4 !== 3, idade = (200 - i) * 2.5 * H * (i % 12 < 2 ? 0.05 : 1);
+    const m = {id:'tm' + i, tel:c.tel, nome:c.nome, cli:c.id, lado:rec ? 'recebida' : 'enviada', tipo:'text', texto:rec ? txt[i % txt.length] : 'Combinado, ' + c.nome.split(' ')[0] + '!',
+      data:new Date(agora - idade).toISOString(), sugestao:null, status:rec && i > 180 ? 'nova' : 'lida', atualizado:'', entrega:rec ? null : ['sent','delivered','read'][i % 3]};
+    if(rec && /Quero 2|Manda 3/.test(m.texto) && i > 170) m.sugestao = {qtd:m.texto.includes('3') ? 3 : 2, valor:m.texto.includes('3') ? 37.5 : 25};
+    MSG.m[m.id] = m;
+  }
+  usuario = {id:'teste', email:'teste'}; let n = 0;
+  if(sb) Object.getPrototypeOf(sb.functions).invoke =async (nome, op) => { await new Promise(r => setTimeout(r, 700));
+    if(++n % 3 === 0) return {data:null, error:{message:'falha de teste', context:{json:async () => ({erro:'falha de teste (modo teste)'})}}};
+    return {data:{id:'tm-env' + n, para:op.body.tel}, error:null}; };
+  marcaNuvem('ok', 'modo teste'); document.title = 'TESTE · ' + document.title;
+}
+if(TESTE) carregaTeste();
 tudo(); pintaZap();
-iniciarNuvem();
+if(!TESTE) iniciarNuvem();
 if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js');
 </script>
 </body>
