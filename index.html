@@ -830,9 +830,34 @@ function rodapeZap(c){
 }
 // ===== Responder pelo app (função "enviar-zap": a mensagem sai do número ligado na Meta, sem abrir o WhatsApp) =====
 const RASC = {}, PEND_ZAP = []; let focoZap = false;
-function janelaZap(c){ const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
+// ===== Extensão do Chrome no PC ("ponte do WhatsApp"): lê o WhatsApp Web e põe a resposta na conversa (ele aperta Enter) =====
+let EXT = false;
+const praExt = o => window.postMessage(Object.assign({origem:'paodemel'}, o), location.origin);
+addEventListener('message', async e => {
+  const m = e.data; if(e.source !== window || !m || m.origem !== 'zap-ext') return;
+  if(m.tipo === 'oi'){ if(!EXT){ EXT = true; const zf = $('#zf'); if(zf) delete zf.dataset.j; pintaZap(); } }
+  else if(m.tipo === 'preencheu'){ if(m.r && m.r.erro) toast('não abriu: ' + m.r.erro); }
+  else if(m.tipo === 'msgs'){
+    if(!sb || !usuario || !m.lista || !m.lista.length) return;
+    const {data, error} = TESTE ? {data:{ok:true}, error:null} : await sb.functions.invoke('zap-extensao', {body:{msgs:m.lista}});
+    if(error || !data || !data.ok) return console.warn('zap-extensao:', error && error.message);
+    if(TESTE) m.lista.forEach(x => MSG.m['web_' + x.id] = {id:'web_' + x.id, tel:x.tel, nome:x.nome, cli:(D.clientes.find(c => c.nome === x.nome) || {}).id || null, lado:x.lado, tipo:'text', texto:x.texto, data:x.data, sugestao:null, status:x.lado === 'enviada' ? 'lida' : 'nova', atualizado:'', entrega:x.lado === 'enviada' ? 'sent' : null});
+    praExt({tipo:'gravou', ids:m.lista.map(x => x.id)});
+    TESTE ? pintaZap() : sincronizar();
+  }
+});
+praExt({tipo:'oi'});
+function janelaZap(c){ if(EXT) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
+  const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
 async function responderZap(c, texto){
   texto = (texto||'').trim(); if(!texto) return;
+  if(EXT){   // PC com a extensão: abre a conversa no WhatsApp Web com o texto pronto; ELE aperta Enter
+    const tel = c.tel || ((c.cli && D.clientes.find(x => x.id === c.cli)) || {}).tel;
+    if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
+    praExt({tipo:'preencher', tel, nome:c.titulo, texto});
+    delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); }
+    return toast('texto no WhatsApp Web: aperte Enter lá');
+  }
   if(!sb || !usuario) return toast('entre na conta primeiro');
   const p = {k:c.k, texto, data:new Date().toISOString(), lado:'enviada', pend:true}; PEND_ZAP.push(p);   // aparece na hora com o reloginho, como no WhatsApp
   delete RASC[c.k]; const zt = $('#zt'); if(zt){ zt.value = ''; cresceZap(zt); }
@@ -1030,7 +1055,7 @@ function carregaTeste(){
   const nomes = ['Ana Souza','Bruno Lima','Carla Mendes','Diego Rocha','Elaine Costa','Fábio Nunes','Gabi Torres','Hugo Prado','Íris Melo','João Pedro','Kátia Reis','Lucas Dias'];
   const agora = Date.now(), H = 36e5, txt = ['Oi! Tem pão de mel hoje?','Quero 2','Manda 3 por favor','Fiz o Pix 😊','Valeu!','Pode separar pra amanhã?','Quanto tá?','Chegou aqui, obrigado','Paga dia 10 ok?','Tem de chocolate branco?'];
   D = copia(PADRAO); D.cfg.chavePix = 'teste@exemplo.com';
-  nomes.forEach((n, i) => D.clientes.push({id:'tc' + i, nome:n, tel:'5541999' + String(10000 + i).slice(1)}));
+  nomes.forEach((n, i) => D.clientes.push({id:'tc' + i, nome:n, tel:'5541999' + String(1000000 + i).slice(1)}));
   D.clientes.forEach((c, i) => { if(i % 3 === 0) D.vendas.push({id:'tv' + i, data:new Date(agora - (i + 8) * 864e5).toISOString(), cli:c.id, qtd:2, preco:12.5, forma:'fiado'}); });
   MSG = MSG_VAZIO();
   for(let i = 0; i < 200; i++){
