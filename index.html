@@ -964,7 +964,9 @@ function avisaFiado(c, qtd, valor){
   if(!c || !c.tel || ehLoja(c.tel)) return;
   const texto = textoFiado(c, qtd, valor);
   // com o envio pelo PC ligado e conta aberta: vai pra fila do ZAP (sai do número da loja) e abre a conversa no app
-  if(ponteZap() && sb && usuario){ setTimeout(()=>responderZap({k:c.id, cli:c.id, tel:c.tel}, texto, null, pixPronto() ? 'pix' : 'text'), 1000); return; }   // depois do carimbo
+  // 2 mensagens: o texto do fiado e logo depois o cartão Pix (o WhatsApp esconde o texto que vai DENTRO do cartão: print dele 26/11)
+  if(ponteZap() && sb && usuario){ setTimeout(async()=>{ const z = {k:c.id, cli:c.id, tel:c.tel};
+    await responderZap(z, texto); if(pixPronto()) await responderZap(z, texto, null, 'pix'); }, 1000); return; }   // depois do carimbo
   abreLink(c.tel, texto);
 }
 const ehLoja = tel => !!D.cfg.zapLoja && chaveTel(tel) === chaveTel(D.cfg.zapLoja);   // nunca mandar cobrança/aviso pro próprio número
@@ -1970,7 +1972,7 @@ function baloes(c){
   for(const m of c.msgs.slice(-200).concat(PEND_ZAP.filter(p=>p.k===c.k))){
     const d = diaZap(m.data); if(d!==dia){ dia = d; ant = null; h += `<div class="zd">${d}</div>`; }
     const eu = m.lado==='enviada', cauda = ant!==m.lado; ant = m.lado;
-    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${esc(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
+    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${m.tipo === 'pix' && pixHtml(m) ? '' : esc(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
   }
   return h;
 }
@@ -2202,9 +2204,9 @@ async function despachaZap(){
     if(livre && idade > 2 * 36e5){ perdidas.push({fila:m.id, ok:false, id:'', erro:'não saiu do PC (mais de 2 h): mande de novo se ainda quiser'}); continue; }
     const o = {fila:m.id, tel:m.tel, texto:m.tipo==='audio' ? '' : m.texto, tipo:m.tipo || 'text', fiado:avisos.has(m.cli + '|' + m.texto)};
     // aviso de FIADO + botão Pix nativo do WhatsApp (igual ao /pix): 1 mensagem com o texto e "copiar chave" com 1 toque (pedido dele 26/11)
-    const pk = (m.tipo === 'pix' || o.fiado) && pixPronto() ? pixChave(D.cfg.chavePix) : null;
+    const pk = m.tipo === 'pix' && pixPronto() ? pixChave(D.cfg.chavePix) : null;
     if(pk && EXTV >= 5){ o.tipo = 'pix'; o.pix = {tipo:pk.tipo, chave:pk.chave, nome:D.cfg.recebedor}; }
-    else if(o.tipo === 'pix') o.tipo = 'text';   // botão desligado ou sem chave: vai só o texto
+    else if(o.tipo === 'pix'){ perdidas.push({fila:m.id, ok:false, id:'', erro:'cartão Pix não saiu: falta chave/nome no ☰ > Dados ou botão desligado'}); continue; }   // o texto já foi na outra mensagem: não repete
     if(livre && idade > 8 * 60000 && !(agora - (REENV[m.id] || 0) < 15 * 60000)){ o.deNovo = true; REENV[m.id] = agora; }
     if(m.tipo === 'audio'){   // áudio de cobrança: o app baixa o arquivo e entrega pronto pra extensão (a página do WhatsApp não baixa de fora)
       if(EXTV < 5){ if(!despachaZap.av){ despachaZap.av = 1; toast('atualize a extensão (recarregar) pra enviar áudio'); } continue; }
