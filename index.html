@@ -75,7 +75,23 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .l .vazio{color:#a8a39b;font-weight:400}
 .tot{font-size:28px;font-weight:600;letter-spacing:-1px;line-height:1.3}
 .preco{border-bottom:1px dotted #8a8a8a;cursor:pointer}
-@media (max-width:420px){ header #data{display:none} }
+@media (max-width:420px){ header #data,header .selo{display:none} }
+.hb.menu{font-size:18px;padding:4px 10px;line-height:1}
+.menu-it{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%;text-align:left;background:var(--papel);padding:16px 14px;margin-bottom:10px;box-shadow:var(--sombra);font-family:Archivo;font-size:16px}
+.menu-it small{grid-column:1;font-family:var(--mono);font-size:11px;opacity:.65;margin-top:3px}
+.menu-it span{grid-column:2;grid-row:1/3;font-size:24px;opacity:.5}
+.vars{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px}
+.vars button{font-family:var(--mono);font-size:12px;padding:6px 8px;border:1px solid #2b2b2b55;border-radius:2px;background:#fff}
+.msgc{border-bottom:1px solid #2b2b2b1f;padding:4px 0}
+.msgc:last-of-type{border-bottom:0}
+.msgc summary{list-style:none;cursor:pointer;padding:10px 24px 10px 0;position:relative}
+.msgc summary::-webkit-details-marker{display:none}
+.msgc summary::after{content:"›";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:22px;opacity:.45;transition:transform .15s}
+.msgc[open] summary::after{transform:translateY(-50%) rotate(90deg)}
+.msgc summary b{display:block;font-family:Archivo;font-size:15px}
+.msgc .prev{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--mono);font-size:11px;color:#6b6660;margin-top:3px;line-height:1.4}
+.msgc[open] .prev{-webkit-line-clamp:unset}
+.msgc textarea{margin:6px 0 8px;min-height:96px}
 .painel-av{position:fixed;z-index:20;top:calc(64px + env(safe-area-inset-top));right:12px;width:min(360px,calc(100vw - 24px));max-height:70vh;overflow-y:auto;background:#f3e6cf;padding:12px 0 2px;box-shadow:0 10px 30px #0004;border-radius:3px}
 .painel-av .bilhete{margin:0 12px 10px}
 .painel-av .nada{font-family:var(--mono);font-size:12px;opacity:.7;padding:4px 14px 12px}
@@ -316,7 +332,7 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
 <body>
 <div class="app">
   <header>
-    <div class="selo">PÃO<br>DE MEL<br>DA VÓ</div>
+    <button class="hb menu" id="btMenu" aria-label="Menu">☰</button><div class="selo">PÃO<br>DE MEL<br>DA VÓ</div>
     <h1 id="titulo">Vender</h1><span class="marca">Pão de Mel da Vó</span>
     <small id="data"></small>
     <button class="hb" id="btZap" aria-label="WhatsApp do aplicativo" title="WhatsApp do aplicativo"><svg class="icozap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.6 20.4l1.2-4.1A8.6 8.6 0 1 1 7.9 19.3z"/><path fill="currentColor" stroke="none" d="M9.1 7.9c.3-.6.8-.6 1.1 0l.6 1.4c.1.3 0 .6-.2.8l-.5.5c.5 1 1.3 1.8 2.3 2.3l.5-.5c.2-.2.5-.3.8-.2l1.4.6c.6.3.6.8 0 1.1-.9.6-2 .7-3 .2a8 8 0 0 1-3.2-3.2c-.5-1-.4-2.1.2-3z"/></svg><i class="selo-n oculto" id="zapN"></i></button><button class="hb" id="btAvi" aria-label="Avisos" title="Avisos"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><i class="selo-n oculto" id="aviN"></i></button><button class="hb" id="btCli">CLIENTES</button><button class="hb" id="btCfg" aria-label="Configurar">⚙<i class="nuvem" id="nuvem"></i></button>
@@ -394,6 +410,9 @@ const PADRAO = {
     preco: 12.5, precos: [12.5, 15, 20], custo: 3.34, chavePix: '', recebedor: '', ultimoBackup: null,
     msgCobrar: 'Oi {nome}! Tudo bem? Passando pra lembrar do pão de mel que ficou pendente: R$ {valor}. Pode pagar no Pix: {pix}. Obrigado!',
     msgFiado: 'Oi {nome}! Anotei R$ {valor} do pão de mel ({qtd} un). Paga quando puder, no Pix: {pix}. Obrigado!',
+    msgCobrar2: 'Oi {nome}! Tudo certo? Só lembrando do pão de mel: ficou R$ {valor}. O Pix é {pix}. Obrigado!',
+    msgCobrar3: 'Oi {nome}, passando de novo sobre o pão de mel: R$ {valor} em aberto. Consegue acertar essa semana? Pix: {pix}.',
+    zapLoja: '',
     msgOferta: 'Oi {nome}! Tudo bem? Chegou novidade: {produto}. Quer que eu separe pra você?',
     produtoNovo: '',
     pcWhats: 'app',     // PC: 'app' = abre o WhatsApp instalado (whatsapp://); 'web' = WhatsApp Web
@@ -474,9 +493,9 @@ const irPara = i => { if(innerWidth<1000) pags.scrollTo({left:i*pags.clientWidth
 let sel = null, q = 1, preco = D.cfg.preco, ocupado = false;
 function pintaAvisos(){
   let h = '';
-  if(!D.cfg.chavePix) h += `<div class="bilhete">Falta sua chave Pix pro botão COBRAR. <a href="#" data-cfg>Pôr agora</a></div>`;
+  if(!D.cfg.chavePix) h += `<div class="bilhete">Falta sua chave Pix pro botão COBRAR. <a href="#" data-sec="dados">Pôr agora</a></div>`;
   const u = D.cfg.ultimoBackup;
-  if(!usuario && D.vendas.length && (!u || dias(u) >= 7)) h += `<div class="bilhete">Faz ${u? dias(u)+' dias':'tempo'} sem backup. Se o Chrome for limpo, as vendas somem. <a href="#" data-cfg>Fazer backup</a></div>`;
+  if(!usuario && D.vendas.length && (!u || dias(u) >= 7)) h += `<div class="bilhete">Faz ${u? dias(u)+' dias':'tempo'} sem backup. Se o Chrome for limpo, as vendas somem. <a href="#" data-sec="backup">Fazer backup</a></div>`;
   const fila = filaCobrar();
   if(fila.length) h += `<div class="bilhete">COBRAR HOJE: <b>${fila.length} pessoa${fila.length===1?'':'s'}</b> · ${R(fila.reduce((s,d)=>s+d.total,0))} (fiado com ${D.cfg.diasCobrar}+ dias). <a href="#" data-fila>Começar</a></div>`;
   const zc = usuario ? conversas().filter(c=>c.etqs.some(ehCobrar)).length : 0;
@@ -487,7 +506,7 @@ function pintaAvisos(){
   $('#aviN').textContent = n; $('#aviN').classList.toggle('oculto', !n);
   $('#avisos').innerHTML = h || '<div class="nada">Nenhum aviso agora.</div>';
   $$('#avisos a').forEach(a=>a.addEventListener('click', ()=>$('#avisos').classList.add('oculto')));
-  $$('#avisos [data-cfg]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaConfig();});
+  $$('#avisos [data-sec]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaSecao(a.dataset.sec);});
   $$('#avisos [data-cli]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaClientes();});
   $$('#avisos [data-zcob]').forEach(a=>a.onclick=e=>{e.preventDefault(); telaZap('cobrar'); if(usuario) sincronizar();});
   $$('#avisos [data-fila]').forEach(a=>a.onclick=e=>{e.preventDefault(); cobrarFila();});
@@ -731,14 +750,16 @@ function textoFiado(c, qtd, valor){
   return preencher(modelo, c, {valor:v2(valor), qtd}).trim();
 }
 function avisaFiado(c, qtd, valor){
-  if(!c || !c.tel) return;
+  if(!c || !c.tel || ehLoja(c.tel)) return;
   const texto = textoFiado(c, qtd, valor);
   // com o envio pelo PC ligado e conta aberta: vai pra fila do ZAP (sai do número da loja) e abre a conversa no app
   if(ponteZap() && sb && usuario){ setTimeout(()=>responderZap({k:c.id, cli:c.id, tel:c.tel}, texto), 1000); return; }   // depois do carimbo
   abreLink(c.tel, texto);
 }
+const ehLoja = tel => !!D.cfg.zapLoja && chaveTel(tel) === chaveTel(D.cfg.zapLoja);   // nunca mandar cobrança/aviso pro próprio número
 function abrirWhats(c, texto, depois){
   if(!c.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
+  if(ehLoja(c.tel)) return toast('esse é o número da loja');
   const dlg = $('#dlg');
   dlg.innerHTML = `<h3>Mandar pra ${esc(c.nome)}</h3>
     <div class="peq">Número: <b>${telBonito(c.tel)}</b> — confira antes.</div>
@@ -816,23 +837,71 @@ function telaClientes(){
 }
 
 // ===== Folha: Configurar + backup =====
+// ===== Menu ☰ (dados, mensagens, backup) e ⚙ (só a parte técnica) =====
+const SECOES = {dados:'Dados pessoais', cobranca:'Mensagens de cobrança', oferta:'Mensagens de oferta', backup:'Backup de segurança'};
+function telaMenu(){
+  const f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
+  const falta = {dados: !D.cfg.chavePix ? 'falta a chave Pix' : '', backup: !D.cfg.ultimoBackup ? 'nunca feito' : dias(D.cfg.ultimoBackup)+' dias atrás'};
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Menu</h3>
+    ${Object.keys(SECOES).map(k=>`<button class="menu-it" data-sec="${k}"><b>${SECOES[k]}</b>${falta[k]?`<small>${falta[k]}</small>`:''}<span>›</span></button>`).join('')}
+    <button class="menu-it" data-sec="cfg"><b>Ajustes do app</b><small>conta, PC, preços, custo</small><span>›</span></button>`;
+  $('#fx').onclick=()=>f.close();
+  f.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=> b.dataset.sec==='cfg' ? telaConfig() : telaSecao(b.dataset.sec));
+  if(!f.open) f.showModal();
+}
+const EXEMPLO = {nome:'Ana Souza', tel:''};
+const prevMsg = t => preencher(t||'', EXEMPLO, {valor:'25,00', qtd:2});
+function telaSecao(k){
+  const c = D.cfg, f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
+  // cada mensagem = cartão fechado (título + como fica); toque abre pra editar
+  const vars = `<div class="vars">${['{nome}','{valor}','{qtd}','{pix}'].map(v=>`<button data-v="${v}">${v}</button>`).join('')}</div>`;
+  const caixa = (id, rot, v) => `<details class="msgc"><summary><b>${rot}</b><span class="prev" id="p_${id}"></span></summary>${vars}<textarea id="${id}" data-prev>${esc(v||'')}</textarea></details>`;
+  const corpo = {
+    dados: `<label style="margin-top:0">CHAVE PIX</label><input id="s1" value="${esc(c.chavePix)}" placeholder="celular, e-mail ou chave aleatória">
+      <label>NOME DA CHAVE PIX</label><input id="s2" value="${esc(c.recebedor)}" placeholder="como aparece pra quem paga">
+      <label>NOSSO WHATSAPP (DA LOJA)</label><input id="s3" type="tel" inputmode="tel" value="${c.zapLoja?esc(telBonito(c.zapLoja)):''}" placeholder="41 99999-9999">
+      <div class="peq" style="margin-top:6px">A chave e o nome vão nas mensagens no lugar de {pix}. O número da loja nunca recebe cobrança.</div>`,
+    cobranca: `${caixa('s4','Na hora do fiado', c.msgFiado)}${caixa('s5','1ª cobrança', c.msgCobrar)}${caixa('s6','2ª cobrança', c.msgCobrar2)}${caixa('s7','3ª cobrança', c.msgCobrar3)}`,
+    oferta: `<label style="margin-top:0">NOVIDADE</label><input id="s10" value="${esc(c.produtoNovo)}" placeholder="ex.: kit de Natal com 6 pães de mel">
+      ${caixa('s11','Mensagem de oferta', c.msgOferta)}`,
+    backup: `<div class="peq" style="margin:0 0 8px">Último: <b>${c.ultimoBackup? dataBR(c.ultimoBackup)+' ('+dias(c.ultimoBackup)+' dias)' : 'nunca'}</b>. ${usuario ? 'Os dados já ficam na nuvem; o backup é uma 2ª cópia: 1 por mês' : 'Clientes e vendas ficam <b>só neste aparelho</b>. Faça 1 por semana'} e guarde em Desktop\\Financas.</div>
+      <div class="linha" style="grid-template-columns:1fr;margin-top:0"><button class="bt cheio" id="kbk">FAZER BACKUP AGORA</button></div>
+      <label>RESTAURAR DE UM BACKUP</label><input type="file" id="kimp" accept=".json,application/json">
+      <div class="peq" style="margin-top:6px">${D.clientes.length} clientes · ${D.vendas.length} vendas · ${D.pagamentos.length} pagamentos de fiado</div>`
+  }[k];
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">VOLTAR</button><h3>${SECOES[k]}</h3>
+    <div class="ficha">${corpo}${k!=='backup' ? '<div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="ssalva">SALVAR</button></div>' : ''}</div>`;
+  $('#fx').onclick=telaMenu;
+  let ultima = f.querySelector('textarea');
+  const pinta = t => { const p = $('#p_'+t.id); if(p) p.textContent = prevMsg(t.value); };
+  f.querySelectorAll('textarea[data-prev]').forEach(t=>{ pinta(t); t.oninput=()=>pinta(t); t.onfocus=()=>ultima=t; });
+  f.querySelectorAll('details.msgc').forEach(d=>d.ontoggle=()=>{ if(d.open){ f.querySelectorAll('details.msgc').forEach(o=>{ if(o!==d) o.open=false; }); ultima=d.querySelector('textarea'); } });   // 1 aberta por vez
+  f.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{ ultima = b.closest('details').querySelector('textarea'); const v=b.dataset.v, i=ultima.selectionStart??ultima.value.length;
+    ultima.value = ultima.value.slice(0,i) + v + ultima.value.slice(ultima.selectionEnd??i); ultima.focus(); ultima.selectionStart=ultima.selectionEnd=i+v.length; pinta(ultima); });
+  if(k==='backup'){ $('#kbk').onclick=backup;
+    $('#kimp').onchange=e=>{ const arq=e.target.files[0]; if(!arq) return;
+      arq.text().then(t=>{ const n=JSON.parse(t); if(!n.clientes||!n.vendas) throw 0;
+        if(confirm(`Trocar os dados deste aparelho pelo backup? (${n.clientes.length} clientes, ${n.vendas.length} vendas)`)){ n.cfg=Object.assign({},PADRAO.cfg,n.cfg); n.pagamentos||=[]; D=n; sel=null; salvar(); tudo(); telaSecao('backup'); toast('restaurado'); }
+      }).catch(()=>toast('arquivo não é um backup válido')); }; }
+  else $('#ssalva').onclick=()=>{
+    if(k==='dados'){ const t=telLimpo($('#s3').value); if($('#s3').value.trim() && !/^55\d{10,11}$/.test(t)) return toast('WhatsApp estranho: use DDD + número');
+      Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t}); }
+    if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value, msgCobrar2:$('#s6').value, msgCobrar3:$('#s7').value});
+    if(k==='oferta') Object.assign(c,{produtoNovo:$('#s10').value, msgOferta:$('#s11').value});
+    salvar(); tudo(); toast('salvo'); telaMenu();
+  };
+  if(!f.open) f.showModal();
+}
 function telaConfig(){
-  const c = D.cfg, f = $('#folha');
-  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Configurar</h3>
+  const c = D.cfg, f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
+  f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Ajustes do app</h3>
     <div class="ficha">
-    <label style="margin-top:0">SUA CHAVE PIX</label><input id="k1" value="${esc(c.chavePix)}" placeholder="celular, e-mail ou chave aleatória">
-    <label>NOME QUE APARECE NO PIX</label><input id="k2" value="${esc(c.recebedor)}" placeholder="pra pessoa conferir antes de pagar">
-    <div class="linha" style="margin-top:0"><div><label>PREÇO DO PÃO</label><input id="k3" inputmode="decimal" value="${v2(c.preco)}"></div>
-    <div><label>CUSTO POR PÃO</label><input id="k4" inputmode="decimal" value="${v2(c.custo)}"></div></div>
-    <label>BOTÕES DE PREÇO NO VENDER (SEPARE COM /)</label><input id="k10" inputmode="decimal" value="${esc(precosBt().map(v2).join(' / '))}">
-    <label>MENSAGEM DE COBRANÇA</label><textarea id="k5">${esc(c.msgCobrar)}</textarea>
-    <div class="peq">{nome} {valor} {qtd} {pix} são trocados sozinhos.</div>
-    <div class="linha" style="margin-top:0"><div><label>COBRAR FIADO COM (DIAS)</label><input id="k7" inputmode="numeric" value="${c.diasCobrar}"></div>
-    <div><label>COBRAR DE NOVO DEPOIS DE (DIAS)</label><input id="k8" inputmode="numeric" value="${c.intervalo}"></div></div>
+    <label style="margin-top:0">BOTÕES DE PREÇO NO VENDER (SEPARE COM /)</label><input id="k10" inputmode="decimal" value="${esc(precosBt().map(v2).join(' / '))}">
+    <label>CUSTO DE CADA PÃO (PRO LUCRO DO MÊS)</label><input id="k4" inputmode="decimal" value="${v2(c.custo)}">
     <div class="linha" style="margin-top:0"><div><label>ESPETO: RECENTE ATÉ (DIAS)</label><input id="k11" inputmode="numeric" value="${c.diasNovo}"></div>
     <div><label>ESPETO: RISCO A PARTIR DE (DIAS)</label><input id="k12" inputmode="numeric" value="${c.diasRisco}"></div></div>
-    <label>MENSAGEM NA HORA DO FIADO</label><textarea id="k9">${esc(c.msgFiado)}</textarea>
-    <label>MENSAGEM DE OFERTA</label><textarea id="k6">${esc(c.msgOferta)}</textarea>
+    <div class="linha" style="margin-top:0"><div><label>COBRAR FIADO COM (DIAS)</label><input id="k7" inputmode="numeric" value="${c.diasCobrar}"></div>
+    <div><label>COBRAR DE NOVO APÓS (DIAS)</label><input id="k8" inputmode="numeric" value="${c.intervalo}"></div></div>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="ksalva">SALVAR</button></div></div>
     ${sb ? `<div class="ficha"><b style="font-family:Archivo">Conta (nuvem)</b>
     <div class="peq" style="margin:6px 0">${usuario ? 'Entrou como <b>'+esc(usuario.email)+'</b>. ' : 'Fora da conta. '}${{ok:'Tudo salvo na nuvem.', indo:'Enviando...', off:'Sem nuvem agora'+(erroNuvem?' ('+esc(erroNuvem)+')':'')+': fica guardado neste aparelho e sobe sozinho quando der.'}[estadoNuvem]||''}</div>
@@ -841,39 +910,26 @@ function telaConfig(){
     <div class="peq" style="margin:6px 0"><b>${c.pcWhats==='web' ? 'WhatsApp Web (no Chrome)' : 'o app do WhatsApp instalado no PC'}</b>. No celular sempre abre o app do WhatsApp.</div>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="kpcw">${c.pcWhats==='web' ? 'TROCAR PRO APP DO WHATSAPP' : 'TROCAR PRO WHATSAPP WEB'}</button></div></div>
     <div class="ficha"><b style="font-family:Archivo">Responder pelo WhatsApp Web do PC</b>
-    <div class="peq" style="margin:6px 0">${c.zapPonte !== false ? '<b>LIGADO.</b> O que você escreve no ZAP (aqui ou no celular) sai do seu número pelo PC: Chrome aberto com o WhatsApp Web e este app. Travas: só pra quem já te mandou mensagem, 1 por vez, até 20 por hora e 80 por dia.' : '<b>DESLIGADO.</b> Liga quando a extensão "ponte do WhatsApp" estiver no Chrome do PC.'}${EXT ? ' Extensão encontrada neste PC.' : ''}</div>
+    <div class="peq" style="margin:6px 0">${c.zapPonte !== false ? '<b>LIGADO.</b> O que você escreve no ZAP (aqui ou no celular) sai do seu número pelo PC: Chrome aberto com o WhatsApp Web e este app. Travas: só pra quem já te mandou mensagem (menos o aviso de fiado), 1 por vez, até 20 por hora e 80 por dia.' : '<b>DESLIGADO.</b> Liga quando a extensão "ponte do WhatsApp" estiver no Chrome do PC.'}${EXT ? ' Extensão encontrada neste PC.' : ''}</div>
     <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="kponte">${c.zapPonte !== false ? 'DESLIGAR ENVIO PELO PC' : 'LIGAR ENVIO PELO PC'}</button></div>
     <div class="peq" style="margin:10px 0 6px">Etiqueta automática: <b>${c.etqAuto===true ? 'LIGADA' : c.etqAuto===false ? 'DESLIGADA' : 'pergunta na 1ª vez'}</b>. Vendeu fiado → põe "Pagamento pendente" no WhatsApp; RECEBI quitou tudo → tira.</div>
-    <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="ketq">${c.etqAuto===true ? 'DESLIGAR ETIQUETA AUTOMÁTICA' : 'LIGAR ETIQUETA AUTOMÁTICA'}</button></div></div>
-    <div class="ficha"><b style="font-family:Archivo">Backup (cópia de segurança)</b>
-    <div class="peq" style="margin:6px 0">Último: ${c.ultimoBackup? dataBR(c.ultimoBackup)+' ('+dias(c.ultimoBackup)+' dias)' : 'nunca'}. ${usuario ? 'Os dados estão na nuvem; o backup é uma 2ª cópia: 1 por mês' : 'Clientes e vendas ficam <b>só neste aparelho</b>. Faça 1 por semana'} e guarde em Desktop\\Financas.</div>
-    <div class="linha" style="grid-template-columns:1fr"><button class="bt cheio" id="kbk">FAZER BACKUP AGORA</button></div>
-    <label>RESTAURAR DE UM BACKUP</label><input type="file" id="kimp" accept=".json,application/json">
-    <div class="peq" style="margin-top:6px">${D.clientes.length} clientes · ${D.vendas.length} vendas · ${D.pagamentos.length} pagamentos de fiado</div></div>`;
+    <div class="linha" style="grid-template-columns:1fr"><button class="bt" id="ketq">${c.etqAuto===true ? 'DESLIGAR ETIQUETA AUTOMÁTICA' : 'LIGAR ETIQUETA AUTOMÁTICA'}</button></div></div>`;
   $('#fx').onclick=()=>f.close();
   $('#ksalva').onclick=()=>{
-    Object.assign(c,{chavePix:$('#k1').value.trim(), recebedor:$('#k2').value.trim(), preco:num($('#k3').value)||12.5, custo:num($('#k4').value)||0, msgCobrar:$('#k5').value, msgOferta:$('#k6').value, msgFiado:$('#k9').value,
-      precos:$('#k10').value.split('/').map(num).filter(v=>v>0).slice(0,3),
+    Object.assign(c,{custo:num($('#k4').value)||0, precos:$('#k10').value.split('/').map(num).filter(v=>v>0).slice(0,3),
       diasNovo:Math.max(1, parseInt($('#k11').value)||7), diasRisco:Math.max(2, parseInt($('#k12').value)||30),
       diasCobrar:Math.max(0, parseInt($('#k7').value)||0), intervalo:Math.max(1, parseInt($('#k8').value)||3)});
-    salvar(); preco=c.preco; tudo(); toast('salvo');
+    c.preco = precosBt()[0]; salvar(); preco=c.preco; tudo(); toast('salvo');
   };
-  $('#kbk').onclick=backup;
   $('#kpcw').onclick=()=>{ c.pcWhats = c.pcWhats==='web' ? 'app' : 'web'; salvar(); telaConfig(); toast(c.pcWhats==='web' ? 'no PC: WhatsApp Web' : 'no PC: app do WhatsApp'); };
   $('#ketq').onclick=()=>{ c.etqAuto = c.etqAuto!==true; salvar(); telaConfig(); toast(c.etqAuto ? 'etiqueta automática ligada' : 'etiqueta automática desligada'); etqAuto(); };
   $('#kponte').onclick=()=>{ c.zapPonte = c.zapPonte === false; salvar(); praExt({tipo:'ligar', ligada:c.zapPonte}); const zf = $('#zf'); if(zf) delete zf.dataset.j; telaConfig(); toast(c.zapPonte ? 'envio pelo PC ligado' : 'envio pelo PC desligado'); };
   if(sb){ $('#ksinc').onclick=async()=>{ await sincronizar(); telaConfig(); toast(estadoNuvem==='ok'?'nuvem em dia':'sem nuvem agora'); };
     $('#ksair').onclick=()=>usuario ? sair() : (f.close(), pedirLogin()); }
-  $('#kimp').onchange=e=>{
-    const arq=e.target.files[0]; if(!arq) return;
-    arq.text().then(t=>{ const n=JSON.parse(t); if(!n.clientes||!n.vendas) throw 0;
-      if(confirm(`Trocar os dados deste aparelho pelo backup? (${n.clientes.length} clientes, ${n.vendas.length} vendas)`)){ n.cfg=Object.assign({},PADRAO.cfg,n.cfg); n.pagamentos||=[]; D=n; sel=null; salvar(); tudo(); telaConfig(); toast('restaurado'); }
-    }).catch(()=>toast('arquivo não é um backup válido'));
-  };
   if(!f.open) f.showModal();
 }
 async function backup(){
-  const marca = () => { D.cfg.ultimoBackup = hoje(); salvar(); tudo(); telaConfig(); };
+  const marca = () => { D.cfg.ultimoBackup = hoje(); salvar(); tudo(); telaSecao('backup'); };
   const nome = 'paodemel-backup-' + new Date().toISOString().slice(0,10) + '.json';
   const blob = new Blob([JSON.stringify(D,null,1)], {type:'application/json'});
   const arq = new File([blob], nome, {type:'application/json'});
@@ -882,6 +938,7 @@ async function backup(){
 }
 $('#btCli').onclick=telaClientes;
 $('#btCfg').onclick=telaConfig;
+$('#btMenu').onclick=telaMenu;
 
 // ===== WhatsApp (Fase B): mensagens que a Meta manda pra função "whatsapp" no Supabase =====
 // O app só LÊ as mensagens e muda o status (lida / vendida / ignorada). Quem grava é a função, com segredo no servidor.
@@ -1246,6 +1303,7 @@ async function responderZap(c, texto){
   if(ponteZap()){
     const tel = c.tel || ((c.cli && D.clientes.find(x => x.id === c.cli)) || {}).tel;
     if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
+    if(ehLoja(tel)) return toast('esse é o número da loja: não envio pra ele');
     if(!sb || !usuario) return toast('entre na conta primeiro');
     delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); }
     try{
