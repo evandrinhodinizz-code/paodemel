@@ -92,6 +92,13 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .msgc .prev{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--mono);font-size:11px;color:#6b6660;margin-top:3px;line-height:1.4}
 .msgc[open] .prev{-webkit-line-clamp:unset}
 .msgc textarea{margin:6px 0 8px;min-height:96px}
+.msgc.grav{padding:10px 0}
+.msgc.grav .gl b{display:block;font-family:Archivo;font-size:15px}
+.gbts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.gbts .bt{padding:11px 0;transition:background .2s,color .2s}
+.gbts .bt:disabled{opacity:.35}
+.gbts .gravando{background:var(--verm);color:#fff;border-color:var(--verm);animation:pulsa 1.2s ease-in-out infinite}
+@keyframes pulsa{50%{opacity:.75}}
 .painel-av{position:fixed;z-index:20;top:calc(64px + env(safe-area-inset-top));right:12px;width:min(360px,calc(100vw - 24px));max-height:70vh;overflow-y:auto;background:#f3e6cf;padding:12px 0 2px;box-shadow:0 10px 30px #0004;border-radius:3px}
 .painel-av .bilhete{margin:0 12px 10px}
 .painel-av .nada{font-family:var(--mono);font-size:12px;opacity:.7;padding:4px 14px 12px}
@@ -159,6 +166,13 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .nota .l{line-height:1.6;color:#6a6a6a}
 .nota .vl{font-size:20px;font-weight:600;color:var(--verm)}
 .velha{color:var(--verm);font-weight:600}
+.etapa{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:11px;color:#6b6660}
+.etapa i{width:16px;height:4px;border-radius:2px;background:#2b2b2b22;transition:background .3s}
+.etapa i.on{background:var(--mel)}
+.etapa.e3 i.on{background:var(--verm)}
+.etapa span{margin-left:4px}
+.acoes:has(.bt-ligar){grid-template-columns:1fr 1fr 1fr}
+.bt-ligar{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:1.2px;padding:9px 0;border-radius:2px;text-align:center;background:var(--verm);color:#fff;text-decoration:none}
 .acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .acoes button,.bt{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:1.2px;padding:9px 0;border:1px solid #2b2b2b;border-radius:2px;text-align:center}
 .acoes .zap,.bt.cheio{background:#2b2b2b;color:var(--papel)}
@@ -198,6 +212,25 @@ nav button.on{color:var(--papel)}
 /* janelas (cliente, receber, WhatsApp) e folhas (clientes, configurar) */
 dialog{border:0;padding:20px 18px;background:var(--papel);color:#2b2b2b;font-family:var(--mono);font-size:13px;width:min(92vw,440px);box-shadow:0 20px 60px #000a;border-radius:2px}
 dialog::backdrop{background:#1a120cb0}
+/* transições suaves (pedido dele 25/11): janelas entram e saem deslizando; troca de tela dentro da folha desliza; cartões abrem macio. Só opacity/transform (leve no celular) */
+dialog{opacity:0;transform:translateY(12px) scale(.97);transition:opacity .22s ease,transform .3s cubic-bezier(.2,.8,.2,1),overlay .3s allow-discrete,display .3s allow-discrete}
+dialog[open]{opacity:1;transform:none}
+@starting-style{dialog[open]{opacity:0;transform:translateY(12px) scale(.97)}}
+dialog.folha{transform:translateX(32px)}
+dialog.folha[open]{transform:none}
+@starting-style{dialog.folha[open]{opacity:0;transform:translateX(32px)}}
+dialog::backdrop{transition:background .3s ease,overlay .3s allow-discrete,display .3s allow-discrete}
+dialog:not([open])::backdrop{background:#1a120c00}
+@starting-style{dialog[open]::backdrop{background:#1a120c00}}
+.troca>*{animation:trocaE .3s cubic-bezier(.2,.8,.2,1) both}
+.troca.volta>*{animation-name:trocaV}
+@keyframes trocaE{from{opacity:0;transform:translateX(22px)}}
+@keyframes trocaV{from{opacity:0;transform:translateX(-22px)}}
+.msgc[open]>:not(summary){animation:abreC .26s cubic-bezier(.2,.8,.2,1) both}
+@keyframes abreC{from{opacity:0;transform:translateY(-6px)}}
+.zetm{animation:abreC .2s ease both}
+.pag,.zl,dialog.folha{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){*,::backdrop{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 dialog h3{margin:0 0 12px;font-family:Archivo;font-size:20px;letter-spacing:-.3px}
 dialog label{display:block;margin:12px 0 4px;font-size:10.5px;letter-spacing:1.3px;font-weight:600}
 dialog .linha{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
@@ -280,6 +313,18 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 .zsa button:active{background:#e7fce3}
 .zsa .nao{color:#667781;border-color:transparent;background:none}
 .zsg.ok2{border:0;background:none;color:#1fa855;font-weight:600;font-size:12px;padding:2px 4px;margin:2px 0 0}
+.zcob{flex:none;background:#fff;border-top:1px solid #e9edef;padding:8px 10px 6px;font-size:12.5px;color:#54656f;animation:zcobEntra .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes zcobEntra{from{transform:translateY(12px);opacity:0}}
+.zcl{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.zcl b{color:#111b21}
+.zcx{font-size:14px;color:#8696a0;padding:2px 6px}
+.zcbs{display:flex;gap:6px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
+.zcb{flex:1 0 auto;font-family:inherit;letter-spacing:0;font-size:11.5px;font-weight:600;padding:8px 10px;border-radius:16px;background:#f0f2f5;color:#54656f;border:1px solid transparent;white-space:nowrap;text-decoration:none;text-align:center;transition:background .2s,color .2s,transform .12s}
+.zcb:active{transform:scale(.96)}
+.zcb.ok{color:#1fa855}
+.zcb.prox{background:#d9fdd3;color:#008069;border-color:#b6e8ad}
+.zcb.arm{background:#008069;color:#fff}
+.zcb.ligar{background:#a8261b;color:#fff}
 .zf{flex:none;display:flex;align-items:flex-end;gap:6px;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 .zin{flex:1;min-width:0;display:flex;align-items:center;background:#fff;border-radius:24px;padding:0 16px;min-height:48px;box-shadow:0 1px .5px #0b141a21}
 .zin textarea{display:block;border:0;border-radius:0;padding:13px 0;margin:0;background:none;font:16px/22px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#111b21;height:48px;min-height:0;max-height:136px;resize:none;outline:0;overflow-y:auto}
@@ -420,7 +465,9 @@ const PADRAO = {
     diasNovo: 7, diasRisco: 30, espOrdem: 'velhos',   // filtro do Espeto: recentes ≤ diasNovo; risco ≥ diasRisco; ordem mais antigo 1º
     diasCobrar: 7,      // fiado com X dias ou mais entra no "COBRAR HOJE"
     intervalo: 3,       // depois de cobrar (ou pular), volta pra fila só depois de X dias
-    cobrados: {}        // {idCliente: data da última cobrança} (vai pra nuvem junto com a config)
+    cobrados: {},       // {idCliente: data da última cobrança} (vai pra nuvem junto com a config)
+    audios: {},         // {2: {path, seg}, 3: {...}} = 2ª e 3ª cobrança gravadas por ele (arquivo no Storage "zap")
+    etapas: {}          // {idCliente: {n: 1|2|3, d: data, desde: dívida mais antiga}} = em que cobrança a nota está (zera quando a nota muda)
   }
 };
 let D = carregar();
@@ -577,31 +624,33 @@ let espFaixa = 'todos';
 const ICO = {lapis:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
   lixo:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>'};
 function faixaDe(n){ return n >= (D.cfg.diasRisco||30) ? 'risco' : n > (D.cfg.diasNovo||7) ? 'antigos' : 'recentes'; }
+const faixaD = d => { const e = etapaDe(d.cid, d); return e && e.n >= 3 ? 'risco' : faixaDe(dias(d.maisAntiga)); };   // passou da 3ª cobrança (LIGAR) = RISCO (decisão dele 25/11)
 function pintaEspeto(){
   const todos = devedores(), total = todos.reduce((s,d)=>s+d.total,0), dn = D.cfg.diasNovo||7, dr = D.cfg.diasRisco||30;
-  const cont = {todos:todos.length, recentes:0, antigos:0, risco:0}; todos.forEach(d=>cont[faixaDe(dias(d.maisAntiga))]++);
+  const cont = {todos:todos.length, recentes:0, antigos:0, risco:0}; todos.forEach(d=>cont[faixaD(d)]++);
   const nomes = {todos:'TODOS', recentes:'RECENTES', antigos:'ANTIGOS', risco:'RISCO'};   // faixas: até dn dias / dn+1 a dr-1 / dr+ (⚙)
   $('#espab').innerHTML = Object.keys(nomes).map(k=>`<button class="${k===espFaixa?'on':''}" data-fx="${k}">${nomes[k]} <small>${cont[k]}</small></button>`).join('');
   $$('#espab [data-fx]').forEach(b=>b.onclick=()=>{ espFaixa=b.dataset.fx; pintaEspeto(); });
   const velhos = D.cfg.espOrdem !== 'novos';
   $('#espord').textContent = velhos ? '↓ ANTIGO 1º' : '↓ NOVO 1º';
   const filtro = $('#espbusca').value.trim().toLowerCase(), dig = filtro.replace(/\D/g,'');
-  const ds = todos.filter(d => (espFaixa==='todos' || faixaDe(dias(d.maisAntiga))===espFaixa)
+  const ds = todos.filter(d => (espFaixa==='todos' || faixaD(d)===espFaixa)
       && (!filtro || d.cli.nome.toLowerCase().includes(filtro) || (dig.length>=3 && String(d.cli.tel||'').includes(dig))))
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
-   + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga); return `
+   + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d); return `
     <div class="nota" data-nota="${d.cid}"><div class="ic"><button data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
       <div class="l"><span>${d.qtd} un · há ${n} dia${n===1?'':'s'}</span><span class="velha">${n>=30?'RISCO DE CALOTE':n>7?'COBRAR JÁ':''}</span></div>
       <div class="l"><span>desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''}</span><span class="vl">${R(d.total)}</span></div>
-      <div class="acoes"><button class="zap" data-cobrar="${d.cid}">COBRAR</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
+      <div class="etapa e${et?et.n:0}">${[1,2,3].map(k=>`<i class="${et&&et.n>=k?'on':''}"></i>`).join('')}<span>${et ? ROT_ET[et.n] + ' · ' + (dias(et.d) ? 'há ' + dias(et.d) + 'd' : 'hoje') + (et.n>=3 ? ' · agora: LIGAR' : '') : 'sem cobrança ainda'}</span></div>
+      <div class="acoes">${et && et.n>=3 && d.cli.tel ? `<a class="bt-ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}<button class="zap" data-cobrar="${d.cid}">${et ? (et.n>=3 ? 'COBRAR' : 'COBRAR ' + (et.n+1) + 'ª') : 'COBRAR'}</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
    : `<div class="vazio-esp">${todos.length ? 'Ninguém neste filtro.' : 'Espeto vazio.<br>Ninguém devendo.'}</div>`);
   $$('#espeto [data-edita]').forEach(b=>b.onclick=()=>notasDo(b.dataset.edita));
   $$('#espeto [data-apaga]').forEach(b=>b.onclick=()=>{ const cid = b.dataset.apaga, abertas = (fiados()[cid]||[]).filter(f=>f.falta>0.004);
     if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
   $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
   $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
-  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(!e.target.closest('button')) notasDo(n.dataset.nota); });
+  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(!e.target.closest('button,a')) notasDo(n.dataset.nota); });
 }
 $('#espbusca').oninput = pintaEspeto;
 $('#espord').onclick = ()=>{ D.cfg.espOrdem = D.cfg.espOrdem==='novos' ? 'velhos' : 'novos'; salvar(); pintaEspeto(); };
@@ -618,7 +667,7 @@ function notasDo(cid){
   $('#fx').onclick=()=>f.close();
   f.querySelectorAll('[data-cor]').forEach(b=>b.onclick=()=>corrigirVenda(b.dataset.cor, cid));
   f.querySelectorAll('[data-apa]').forEach(b=>b.onclick=()=>apagarVenda(b.dataset.apa, cid));
-  if(!f.open) f.showModal();
+  troca(f, 'notas'); if(!f.open) f.showModal();
 }
 function depoisDeMexer(cid){ salvar(); tudo(); if($('#folha').open) notasDo(cid); }
 function apagarVenda(vid, cid){
@@ -770,10 +819,50 @@ function abrirWhats(c, texto, depois){
   $('#wa').onclick=()=>{ abreLink(c.tel, $('#tx').value); dlg.close(); if(depois) depois(); };
   dlg.showModal();
 }
-function cobrar(cid){
-  if(!D.cfg.chavePix){ toast('coloque a chave Pix no ⚙ primeiro'); return telaConfig(); }
+// COBRANÇA EM ETAPAS: 1ª = texto; 2ª e 3ª = áudio gravado por ele (Menu ☰ > Mensagens de cobrança); depois da 3ª = LIGAR.
+// Com o envio pelo PC (extensão) o COBRAR abre a conversa no ZAP com os 3 botões; sem ele, abre o WhatsApp com a 1ª (texto).
+let COBRA = null;   // {cid, fila} = conversa aberta pelo COBRAR (mostra a barra de cobrança)
+function etapaDe(cid, d){ d ||= devedores().find(x=>x.cid===cid); const e = (D.cfg.etapas||{})[cid]; return e && d && e.desde === d.maisAntiga ? e : null; }   // pagou e fez fiado novo = começa da 1ª
+const ROT_ET = {1:'1ª cobrança (texto)', 2:'2ª cobrança (áudio)', 3:'3ª cobrança (áudio)'};
+function marcaEtapa(cid, n){
   const d = devedores().find(x=>x.cid===cid);
-  abrirWhats(d.cli, preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd}), ()=>marcaCobrado(cid));
+  D.cfg.etapas = {...(D.cfg.etapas||{}), [cid]: {n, d: hoje(), desde: d ? d.maisAntiga : ''}};
+  marcaCobrado(cid);
+  if($('#folha').open && zapTela && $('#zcob')) telaConversa(zapTela, true);   // barra mostra a etapa nova na hora
+}
+const telLigar = t => { const d = String(t||'').replace(/\D/g,''); return d.startsWith('55') ? '+' + d : d; };
+function cobrar(cid, fila){
+  if(!D.cfg.chavePix){ toast('coloque a chave Pix no ⚙ primeiro'); return telaSecao('dados'); }
+  const d = devedores().find(x=>x.cid===cid); if(!d) return;
+  if(!d.cli.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
+  if(ehLoja(d.cli.tel)) return toast('esse é o número da loja');
+  if(ponteZap() && sb && usuario){ COBRA = {cid, fila: !!fila}; if($('#dlg').open) $('#dlg').close(); return abreCobranca(cid); }
+  abrirWhats(d.cli, preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd}), ()=>marcaEtapa(cid, 1));
+}
+function abreCobranca(cid){   // conversa do cliente no ZAP (cria uma vazia se ainda não tem mensagem)
+  const c = conversas().find(x=>x.cli===cid); telaConversa(c ? c.k : cid);
+}
+function barraCobra(c){   // barra em cima do campo de mensagem: em que cobrança está + 1ª / 2ª / 3ª (+ LIGAR)
+  const el = $('#zcob'); if(!el) return;
+  if(!COBRA || COBRA.cid !== c.cli){ el.innerHTML = ''; el.hidden = true; return; }
+  const d = devedores().find(x=>x.cid===COBRA.cid);
+  if(!d){ el.hidden = false; el.innerHTML = `<div class="zcl"><span><b>Pago</b> · nada em aberto</span><button class="zcx" data-cx>✕</button></div>`; return; }
+  const e = etapaDe(d.cid, d), n = e ? e.n : 0, au = D.cfg.audios||{};
+  const bt = k => { const feito = n >= k, prox = n + 1 === k, arm = el._arm === k, falta = k > 1 && !(au[k] && au[k].path);
+    return `<button class="zcb${feito?' ok':''}${prox?' prox':''}${arm?' arm':''}" data-cb="${k}">${arm ? 'TOQUE DE NOVO PRA ENVIAR' : (feito?'✓ ':'') + (k===1?'1ª MENSAGEM':k+'ª ÁUDIO') + (falta?' · gravar':'')}</button>`; };
+  el.hidden = false;
+  el.innerHTML = `<div class="zcl"><span>Deve <b>${R(d.total)}</b> · há ${dias(d.maisAntiga)}d · ${n ? 'feita a ' + ROT_ET[n] + (e.d ? ' ' + (dias(e.d) ? 'há ' + dias(e.d) + 'd' : 'hoje') : '') : 'nenhuma cobrança ainda'}</span><button class="zcx" data-cx aria-label="fechar">✕</button></div>
+    <div class="zcbs">${bt(1)}${bt(2)}${bt(3)}${n>=3 ? `<a class="zcb ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}${COBRA.fila ? '<button class="zcb" data-prox>PRÓXIMO ›</button>' : ''}</div>`;
+  el.onclick = ev => { const b = ev.target.closest('[data-cb],[data-cx],[data-prox]'); if(!b) return;
+    if(b.dataset.cx !== undefined){ COBRA = null; return barraCobra(c); }
+    if(b.dataset.prox !== undefined){ COBRA = null; return cobrarFila(); }
+    const k = +b.dataset.cb;
+    if(k > 1 && !(au[k] && au[k].path)){ toast('grave a ' + k + 'ª cobrança primeiro'); return telaSecao('cobranca'); }
+    if(el._arm !== k){ el._arm = k; clearTimeout(el._t); el._t = setTimeout(()=>{ el._arm = 0; barraCobra(c); }, 4000); return barraCobra(c); }   // 2 toques: nada sai sem querer
+    el._arm = 0; clearTimeout(el._t);
+    if(k === 1) responderZap(c, preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd}), ()=>marcaEtapa(d.cid, 1));
+    else enviarAudioZap(c, k, ()=>marcaEtapa(d.cid, k));
+  };
 }
 function marcaCobrado(cid){ D.cfg.cobrados = {...D.cfg.cobrados, [cid]: hoje()}; salvar(); tudo(); }
 // Fila do dia: fiado com diasCobrar+ dias, com WhatsApp, e que não foi cobrado (nem pulado) nos últimos "intervalo" dias.
@@ -786,6 +875,17 @@ function cobrarFila(){
   const fila = filaCobrar(), dlg = $('#dlg');
   if(!fila.length){ if(dlg.open) dlg.close(); return toast('pronto: ninguém mais pra cobrar hoje'); }
   const d = fila[0], n = dias(d.maisAntiga), txt = preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd});
+  if(ponteZap() && sb && usuario){   // envio pelo PC: abre a conversa com a barra 1ª / 2ª / 3ª (+ PRÓXIMO)
+    const e = etapaDe(d.cid, d);
+    dlg.innerHTML = `<h3>Cobrar hoje · faltam ${fila.length}</h3>
+      <div class="peq"><b>${esc(d.cli.nome)}</b> · ${telBonito(d.cli.tel)} · ${R(d.total)} · há ${n} dia${n===1?'':'s'} · ${e ? 'feita a ' + ROT_ET[e.n] : 'nenhuma cobrança ainda'}</div>
+      <div class="linha tres"><button class="bt" id="fx">PARAR</button><button class="bt" id="fp">PULAR</button><button class="bt cheio" id="fa">ABRIR CONVERSA</button></div>
+      <p class="peq">Na conversa: 1ª = texto, 2ª e 3ª = seu áudio. PULAR = não cobrar essa pessoa por ${D.cfg.intervalo} dia${D.cfg.intervalo===1?'':'s'}.</p>`;
+    $('#fx').onclick=()=>dlg.close();
+    $('#fp').onclick=()=>{ marcaCobrado(d.cid); cobrarFila(); };
+    $('#fa').onclick=()=>cobrar(d.cid, true);
+    if(!dlg.open) dlg.showModal(); return;
+  }
   dlg.innerHTML = `<h3>Cobrar hoje · faltam ${fila.length}</h3>
     <div class="peq"><b>${esc(d.cli.nome)}</b> · ${telBonito(d.cli.tel)} · ${R(d.total)} · há ${n} dia${n===1?'':'s'}${D.cfg.cobrados[d.cid]?` · última cobrança há ${dias(D.cfg.cobrados[d.cid])}d`:''}</div>
     <label>MENSAGEM (PODE MUDAR)</label><textarea id="tx">${esc(txt)}</textarea>
@@ -793,7 +893,7 @@ function cobrarFila(){
     <p class="peq">Abre com a mensagem pronta; quem aperta enviar é você. Depois volte aqui pro próximo. PULAR = não cobrar essa pessoa por ${D.cfg.intervalo} dia${D.cfg.intervalo===1?'':'s'}.</p>`;
   $('#fx').onclick=()=>dlg.close();
   $('#fp').onclick=()=>{ marcaCobrado(d.cid); cobrarFila(); };
-  $('#fa').onclick=()=>{ abreLink(d.cli.tel, $('#tx').value); marcaCobrado(d.cid); cobrarFila(); };
+  $('#fa').onclick=()=>{ abreLink(d.cli.tel, $('#tx').value); marcaEtapa(d.cid, 1); cobrarFila(); };
   if(!dlg.open) dlg.showModal();
 }
 function receber(cid){
@@ -833,7 +933,7 @@ function telaClientes(){
   f.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>novoCliente(false,b.dataset.ed));
   f.querySelectorAll('[data-cob]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cob));
   f.querySelectorAll('[data-of]').forEach(b=>b.onclick=()=>oferecer(b.dataset.of));
-  if(!f.open) f.showModal();
+  troca(f, 'cli'); if(!f.open) f.showModal();
 }
 
 // ===== Folha: Configurar + backup =====
@@ -847,7 +947,7 @@ function telaMenu(){
     <button class="menu-it" data-sec="cfg"><b>Ajustes do app</b><small>conta, PC, preços, custo</small><span>›</span></button>`;
   $('#fx').onclick=()=>f.close();
   f.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=> b.dataset.sec==='cfg' ? telaConfig() : telaSecao(b.dataset.sec));
-  if(!f.open) f.showModal();
+  troca(f, 'menu'); if(!f.open) f.showModal();
 }
 const EXEMPLO = {nome:'Ana Souza', tel:''};
 const prevMsg = t => preencher(t||'', EXEMPLO, {valor:'25,00', qtd:2});
@@ -861,7 +961,8 @@ function telaSecao(k){
       <label>NOME DA CHAVE PIX</label><input id="s2" value="${esc(c.recebedor)}" placeholder="como aparece pra quem paga">
       <label>NOSSO WHATSAPP (DA LOJA)</label><input id="s3" type="tel" inputmode="tel" value="${c.zapLoja?esc(telBonito(c.zapLoja)):''}" placeholder="41 99999-9999">
       <div class="peq" style="margin-top:6px">A chave e o nome vão nas mensagens no lugar de {pix}. O número da loja nunca recebe cobrança.</div>`,
-    cobranca: `${caixa('s4','Na hora do fiado', c.msgFiado)}${caixa('s5','1ª cobrança', c.msgCobrar)}${caixa('s6','2ª cobrança', c.msgCobrar2)}${caixa('s7','3ª cobrança', c.msgCobrar3)}`,
+    cobranca: `${caixa('s4','Na hora do fiado', c.msgFiado)}${caixa('s5','1ª cobrança', c.msgCobrar)}${[2,3].map(n=>`<div class="msgc grav" id="g${n}"><div class="gl"><b>${n}ª cobrança · seu áudio</b><span class="prev"></span></div><div class="gbts"><button class="bt" data-gr="${n}"></button><button class="bt" data-ou="${n}">▶ OUVIR</button></div></div>`).join('')}
+      <div class="peq" style="margin-top:6px">1ª = texto. 2ª e 3ª = áudio seu, vai como mensagem de voz pelo WhatsApp da loja. Depois da 3ª, o Espeto mostra LIGAR.</div>`,
     oferta: `<label style="margin-top:0">NOVIDADE</label><input id="s10" value="${esc(c.produtoNovo)}" placeholder="ex.: kit de Natal com 6 pães de mel">
       ${caixa('s11','Mensagem de oferta', c.msgOferta)}`,
     backup: `<div class="peq" style="margin:0 0 8px">Último: <b>${c.ultimoBackup? dataBR(c.ultimoBackup)+' ('+dias(c.ultimoBackup)+' dias)' : 'nunca'}</b>. ${usuario ? 'Os dados já ficam na nuvem; o backup é uma 2ª cópia: 1 por mês' : 'Clientes e vendas ficam <b>só neste aparelho</b>. Faça 1 por semana'} e guarde em Desktop\\Financas.</div>
@@ -878,6 +979,7 @@ function telaSecao(k){
   f.querySelectorAll('details.msgc').forEach(d=>d.ontoggle=()=>{ if(d.open){ f.querySelectorAll('details.msgc').forEach(o=>{ if(o!==d) o.open=false; }); ultima=d.querySelector('textarea'); } });   // 1 aberta por vez
   f.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{ ultima = b.closest('details').querySelector('textarea'); const v=b.dataset.v, i=ultima.selectionStart??ultima.value.length;
     ultima.value = ultima.value.slice(0,i) + v + ultima.value.slice(ultima.selectionEnd??i); ultima.focus(); ultima.selectionStart=ultima.selectionEnd=i+v.length; pinta(ultima); });
+  if(k==='cobranca'){ [2,3].forEach(pintaGrav); f.querySelectorAll('[data-gr]').forEach(b=>b.onclick=()=>gravar(+b.dataset.gr)); f.querySelectorAll('[data-ou]').forEach(b=>b.onclick=()=>ouvir(+b.dataset.ou)); }
   if(k==='backup'){ $('#kbk').onclick=backup;
     $('#kimp').onchange=e=>{ const arq=e.target.files[0]; if(!arq) return;
       arq.text().then(t=>{ const n=JSON.parse(t); if(!n.clientes||!n.vendas) throw 0;
@@ -886,11 +988,11 @@ function telaSecao(k){
   else $('#ssalva').onclick=()=>{
     if(k==='dados'){ const t=telLimpo($('#s3').value); if($('#s3').value.trim() && !/^55\d{10,11}$/.test(t)) return toast('WhatsApp estranho: use DDD + número');
       Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t}); }
-    if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value, msgCobrar2:$('#s6').value, msgCobrar3:$('#s7').value});
+    if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value});
     if(k==='oferta') Object.assign(c,{produtoNovo:$('#s10').value, msgOferta:$('#s11').value});
     salvar(); tudo(); toast('salvo'); telaMenu();
   };
-  if(!f.open) f.showModal();
+  troca(f, 'sec:'+k); if(!f.open) f.showModal();
 }
 function telaConfig(){
   const c = D.cfg, f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
@@ -926,7 +1028,7 @@ function telaConfig(){
   $('#kponte').onclick=()=>{ c.zapPonte = c.zapPonte === false; salvar(); praExt({tipo:'ligar', ligada:c.zapPonte}); const zf = $('#zf'); if(zf) delete zf.dataset.j; telaConfig(); toast(c.zapPonte ? 'envio pelo PC ligado' : 'envio pelo PC desligado'); };
   if(sb){ $('#ksinc').onclick=async()=>{ await sincronizar(); telaConfig(); toast(estadoNuvem==='ok'?'nuvem em dia':'sem nuvem agora'); };
     $('#ksair').onclick=()=>usuario ? sair() : (f.close(), pedirLogin()); }
-  if(!f.open) f.showModal();
+  troca(f, 'cfg'); if(!f.open) f.showModal();
 }
 async function backup(){
   const marca = () => { D.cfg.ultimoBackup = hoje(); salvar(); tudo(); telaSecao('backup'); };
@@ -956,7 +1058,7 @@ async function enviarMsgs(){
 async function baixarMsgs(){
   const desde = MSG.ate ? new Date(new Date(MSG.ate) - 6e5).toISOString() : null;
   for(let de = 0; ; de += 1000){
-    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,texto,data,sugestao,status,atualizado,entrega');   // 'midia' volta quando a coluna existir no Supabase (supabase-whatsapp.sql); sem ela a busca falhava e nada chegava
+    let qy = sb.from('mensagens').select('id,tel,nome,cli,lado,tipo,midia,texto,data,sugestao,status,atualizado,entrega');   // coluna midia criada no Supabase em 25/11 ~23h (antes a busca falhava e nada chegava)
     if(desde) qy = qy.gt('atualizado', desde);
     const {data, error} = await qy.order('atualizado').order('id').range(de, de + 999);
     if(error){ if(/mensagens/.test(error.message)) return console.warn('zap:', error.message); throw error; }   // tabela ainda não criada: não trava o resto
@@ -1068,6 +1170,8 @@ function conversas(){
   Object.values(ZC.conv).forEach(z => { if(usados.has(z.tel)) return;   // conversa só no WhatsApp (mais de 30 dias sem mensagem no app)
     const cl = D.clientes.find(x => x.tel && chaveTel(x.tel)===chaveTel(z.tel));
     lista.push({k:'z' + z.tel, cli:cl ? cl.id : null, tel:z.tel, nome:'', msgs:[], novas:0, sug:false, z}); });
+  if(COBRA && !lista.some(c => c.cli===COBRA.cid)){ const cl = cliPor(COBRA.cid);   // COBRAR de quem ainda não tem conversa: abre uma vazia
+    if(cl && cl.tel) lista.push({k:COBRA.cid, cli:cl.id, tel:String(cl.tel).replace(/\D/g,''), nome:'', msgs:[], novas:0, sug:false, ult:{data:'', texto:'', lado:'recebida'}}); }
   lista.forEach(c => {
     const z = c.z, cl = c.cli && D.clientes.find(x=>x.id===c.cli);
     if(z && z.ult_data && z.ult_texto && (!c.ult || z.ult_data > c.ult.data)) c.ult = {data:z.ult_data, texto:z.ult_texto, lado:z.ult_eu?'enviada':'recebida', entrega:z.ult_eu ? ACK_ENT[z.ult_ack] || null : null};
@@ -1157,7 +1261,7 @@ function telaZap(filtro){
   f.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>telaConversa(b.dataset.k));
   const ib = $('#zbu'); ib.oninput = () => { zapBusca = ib.value; telaZap(); };
   if(focoBu){ ib.focus(); ib.setSelectionRange(ib.value.length, ib.value.length); }
-  if(!f.open) f.showModal();
+  troca(f, 'zap'); if(!f.open) f.showModal();
 }
 function sugZap(m){
   if(m.status==='vendida') return '<div class="zsg ok2">✓ venda anotada</div>';
@@ -1205,8 +1309,8 @@ function telaConversa(k, soRepinta){
       <span class="zh"><b>${esc(c.titulo)}</b><small id="zhs"></small></span>
       ${Object.keys(ZC.etq).length ? `<button class="zec" id="zet" title="etiquetas" aria-label="etiquetas"></button>` : ''}
       <button class="zi" id="zr" title="abrir no meu WhatsApp" aria-label="abrir no meu WhatsApp">${ZI.sai}</button></div>
-      <div class="zm" id="zm"></div><div class="zf" id="zf"></div>`;
-    $('#fx').onclick = ()=>telaZap();
+      <div class="zm" id="zm"></div><div class="zcob" id="zcob" hidden></div><div class="zf" id="zf"></div>`;
+    $('#fx').onclick = ()=>{ COBRA = null; telaZap(); };
     if($('#zet')) $('#zet').onclick = ()=>menuEtq(k);
     $('#zr').onclick = ()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, RASC[k] || '');
     $('#zm').onclick = e=>{ const b = e.target.closest('button'); if(!b) return;
@@ -1218,8 +1322,8 @@ function telaConversa(k, soRepinta){
   const ze = $('#zet'); if(ze) ze.innerHTML = c.etqs.length ? `${bolinha(c.etqs[0])}<span>${esc(c.etqs[0].nome)}${c.etqs.length > 1 ? ' +' + (c.etqs.length - 1) : ''}</span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>` : `${ZI.etq}<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>`;
   const zm = $('#zm'), noFim = !mesmo || zm.scrollHeight - zm.scrollTop - zm.clientHeight < 80;
   const html = c.msgs.length ? baloes(c) : '<div class="zd">Mensagens com mais de 30 dias ficam só no WhatsApp</div>'; if(zm._h!==html){ zm.innerHTML = html; zm._h = html; carregaMidia(zm); }   // nada mudou = não redesenha (a cada 1 min)
-  rodapeZap(c);
-  if(!f.open) f.showModal();
+  rodapeZap(c); barraCobra(c);
+  troca(f, 'conv:'+k); if(!f.open) f.showModal();
   if(noFim) zm.scrollTop = zm.scrollHeight;
   const lidas = c.msgs.filter(m=>m.status==='nova' && !m.sugestao).map(m=>m.id);
   if(lidas.length) marcar(lidas, 'lida');
@@ -1252,12 +1356,129 @@ function rodapeZap(c){
 }
 // ===== Responder pelo app (função "enviar-zap": a mensagem sai do número ligado na Meta, sem abrir o WhatsApp) =====
 const RASC = {}, PEND_ZAP = []; let focoZap = false;
+// ===== Áudio de cobrança (2ª e 3ª): gravado no app, guardado no Storage "zap", enviado como mensagem de voz =====
+// O Chrome grava em WebM; a mensagem de voz do WhatsApp é Ogg/Opus. webmParaOgg só troca a "caixa" (o som é o mesmo, sem recodificar).
+function webmParaOgg(buf){
+  const u = new Uint8Array(buf), quadros = []; let head = null;
+  const vint = (p, tira) => { const b = u[p]; let n = 1, m = 0x80; while(n < 8 && !(b & m)){ n++; m >>= 1; }
+    let v = tira ? b & (m - 1) : b, cheio = tira && (b & (m - 1)) === m - 1;
+    for(let i = 1; i < n; i++){ v = v * 256 + u[p + i]; if(u[p + i] !== 255) cheio = false; } return {v, n, cheio}; };
+  const MESTRE = new Set([0x18538067, 0x1F43B675, 0x1654AE6B, 0xAE, 0xA0]);   // Segment, Cluster, Tracks, TrackEntry, BlockGroup: desce dentro
+  for(let p = 0; p < u.length - 2;){
+    const id = vint(p, false), tam = vint(p + id.n, true), ini = p + id.n + tam.n;
+    if(MESTRE.has(id.v)){ p = ini; continue; }
+    const fim = tam.cheio ? u.length : Math.min(u.length, ini + tam.v);
+    if(id.v === 0x63A2) head = u.slice(ini, fim);   // CodecPrivate = OpusHead
+    else if(id.v === 0xA3 || id.v === 0xA1){ const tn = vint(ini, true); quadros.push(u.slice(ini + tn.n + 3, fim)); }   // SimpleBlock/Block: trilha + 2 bytes de tempo + 1 de flags
+    p = fim;
+  }
+  if(!quadros.length) throw new Error('gravação vazia');
+  if(!head || String.fromCharCode(...head.slice(0, 8)) !== 'OpusHead') head = new Uint8Array([79,112,117,115,72,101,97,100,1,1,56,1,128,187,0,0,0,0,0]);
+  const crc = webmParaOgg.crc ||= (() => { const t = new Uint32Array(256); for(let i = 0; i < 256; i++){ let r = i << 24; for(let j = 0; j < 8; j++) r = r & 0x80000000 ? (r << 1) ^ 0x04c11db7 : r << 1; t[i] = r >>> 0; } return t; })();
+  const serie = (Math.random() * 2 ** 32) >>> 0, pags = []; let seq = 0;
+  const pagina = (pks, gr, tipo) => {
+    const seg = []; pks.forEach(k => { let n = k.length; while(n >= 255){ seg.push(255); n -= 255; } seg.push(n); });
+    const b = new Uint8Array(27 + seg.length + pks.reduce((s, k) => s + k.length, 0)), dv = new DataView(b.buffer);
+    b.set([79,103,103,83]); b[5] = tipo; dv.setUint32(6, gr % 2 ** 32, true); dv.setUint32(10, Math.floor(gr / 2 ** 32), true);
+    dv.setUint32(14, serie, true); dv.setUint32(18, seq++, true); b[26] = seg.length; b.set(seg, 27);
+    let o = 27 + seg.length; pks.forEach(k => { b.set(k, o); o += k.length; });
+    let c = 0; for(let i = 0; i < b.length; i++) c = ((c << 8) ^ crc[((c >>> 24) ^ b[i]) & 255]) >>> 0; dv.setUint32(22, c, true);
+    pags.push(b);
+  };
+  const amostras = q => { const cfg = q[0] >> 3, c = q[0] & 3;
+    const dur = cfg < 12 ? [480,960,1920,2880][cfg & 3] : cfg < 16 ? [480,960][cfg & 1] : [120,240,480,960][cfg & 3];
+    return dur * (c === 0 ? 1 : c === 3 ? (q[1] & 63) : 2); };
+  pagina([head], 0, 2);
+  const vend = new TextEncoder().encode('paodemel'), tags = new Uint8Array(8 + 4 + vend.length + 4);
+  tags.set(new TextEncoder().encode('OpusTags')); new DataView(tags.buffer).setUint32(8, vend.length, true); tags.set(vend, 12);
+  pagina([tags], 0, 0);
+  let gr = 0;
+  for(let i = 0; i < quadros.length; i += 50){
+    const pks = quadros.slice(i, i + 50); pks.forEach(q => gr += amostras(q));
+    pagina(pks, gr, i + 50 >= quadros.length ? 4 : 0);
+  }
+  return new Blob(pags, {type: 'audio/ogg'});
+}
+const AUD_TESTE = {};   // ?teste=1: o áudio fica só na memória (nada sobe pra nuvem)
+const AUD_DADOS = {};
+async function audioDados(path){   // arquivo do Storage → data:audio/ogg;base64,... (guardado na memória)
+  if(!path) return '';
+  if(AUD_DADOS[path]) return AUD_DADOS[path];
+  let b = AUD_TESTE[path] || null;
+  if(!b && sb && usuario && !TESTE){ const {data, error} = await sb.storage.from('zap').download(path); if(error){ toast('não baixou o áudio: ' + error.message); return ''; } b = data; }
+  if(!b) return '';
+  const u = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(new Blob([b], {type:'audio/ogg'})); });
+  return AUD_DADOS[path] = u;
+}
+async function enviarAudioZap(c, n, depois){
+  const a = (D.cfg.audios||{})[n]; if(!a || !a.path) return toast('grave a ' + n + 'ª cobrança primeiro');
+  const tel = c.tel || ((c.cli && cliPor(c.cli)) || {}).tel;
+  if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
+  if(ehLoja(tel)) return toast('esse é o número da loja: não envio pra ele');
+  if(!sb || !usuario) return toast('entre na conta primeiro');
+  try{
+    const midia = {path:a.path, mime:'audio/ogg', seg:a.seg || 0};
+    const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel, cli:c.cli, texto:'[áudio]', tipo:'audio', midia}}});
+    if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
+    MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo:'audio', midia, texto:'[áudio]', data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
+    guardaMsg(); telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
+    if(EXT) despachaZap(); else toast('na fila: sai pelo PC (WhatsApp Web aberto)');
+    if(depois) depois();
+  }catch(e){ toast('não foi pra fila: ' + e.message); }
+}
+// Gravador (Menu ☰ > Mensagens de cobrança): GRAVAR → PARAR → OUVIR / REGRAVAR. Salva sozinho ao parar.
+let GRAV = null;   // {n, rec, partes, ini, t}
+const minSeg = s => Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0');
+function pintaGrav(n){
+  const el = $('#g' + n); if(!el) return;
+  const a = (D.cfg.audios||{})[n], gr = GRAV && GRAV.n === n;
+  el.querySelector('.prev').textContent = gr ? 'gravando… ' + minSeg((Date.now() - GRAV.ini) / 1000) : GRAV && GRAV.salvando === n ? 'salvando…' : a && a.path ? 'gravado · ' + minSeg(a.seg || 0) : 'ainda não gravado';
+  el.querySelector('[data-gr]').textContent = gr ? '■ PARAR' : a && a.path ? '● REGRAVAR' : '● GRAVAR';
+  el.querySelector('[data-gr]').classList.toggle('gravando', !!gr);
+  el.querySelector('[data-ou]').disabled = !(a && a.path) || !!gr;
+}
+async function gravar(n){
+  if(GRAV && GRAV.n === n){ GRAV.rec.stop(); return; }   // 2º toque = parar
+  if(GRAV) return toast('termine a outra gravação primeiro');
+  let st; try{ st = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}}); }
+  catch(e){ return toast('sem microfone: libere o microfone pro app'); }
+  const tipo = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const rec = new MediaRecorder(st, tipo ? {mimeType:tipo, audioBitsPerSecond:32000} : {}), partes = [];
+  GRAV = {n, rec, partes, ini:Date.now(), t:setInterval(() => { pintaGrav(n); if(Date.now() - GRAV.ini > 120e3) rec.stop(); }, 250)};   // máx. 2 min
+  rec.ondataavailable = e => { if(e.data.size) partes.push(e.data); };
+  rec.onstop = async () => {
+    st.getTracks().forEach(t => t.stop()); clearInterval(GRAV.t);
+    const seg = (Date.now() - GRAV.ini) / 1000; GRAV = {salvando:n}; pintaGrav(n);
+    try{
+      if(seg < 1) throw new Error('muito curto');
+      const bruto = new Blob(partes, {type: rec.mimeType});
+      const ogg = /webm/.test(rec.mimeType) ? webmParaOgg(await bruto.arrayBuffer()) : bruto;   // iPhone grava mp4: vai como está
+      const ext = /mp4/.test(ogg.type) ? 'm4a' : 'ogg';
+      let path;
+      if(TESTE || !sb || !usuario){ path = 'teste/cobranca' + n + '-' + Date.now() + '.' + ext; AUD_TESTE[path] = ogg; URLM[path] = URL.createObjectURL(ogg); }
+      else { path = usuario.id + '/cobranca/' + n + '-' + Date.now() + '.' + ext;
+        const {error} = await sb.storage.from('zap').upload(path, ogg, {contentType: ogg.type || 'audio/ogg', upsert:false});
+        if(error) throw new Error(error.message); }
+      D.cfg.audios = {...(D.cfg.audios||{}), [n]: {path, seg: Math.round(seg)}}; salvar(); toast(n + 'ª cobrança gravada');
+    }catch(e){ toast('não salvou o áudio: ' + e.message); }
+    GRAV = null; pintaGrav(n);
+  };
+  rec.start(250); pintaGrav(n);
+}
+async function ouvir(n){
+  const a = (D.cfg.audios||{})[n]; if(!a || !a.path) return;
+  let u = URLM[a.path];
+  if(!u){ const d = await audioDados(a.path); if(!d) return; u = URLM[a.path] = d; }
+  const au = ouvir.au ||= new Audio(); if(!au.paused && au.src === u){ au.pause(); return; }
+  au.src = u; au.play().catch(e => toast('não tocou: ' + e.message));
+}
+
 // ===== Extensão do Chrome no PC ("ponte do WhatsApp"): lê o WhatsApp Web e põe a resposta na conversa (ele aperta Enter) =====
-let EXT = false;
+let EXT = false, EXTV = 0;   // EXTV = versão da ponte (5+ envia áudio)
 const praExt = o => window.postMessage(Object.assign({origem:'paodemel'}, o), location.origin);
 addEventListener('message', async e => {
   const m = e.data; if(e.source !== window || !m || m.origem !== 'zap-ext') return;
-  if(m.tipo === 'oi'){ if(!EXT && m.versao >= 2){ EXT = true;
+  if(m.tipo === 'oi'){ EXTV = Math.max(EXTV, +m.versao || 0); if(!EXT && m.versao >= 2){ EXT = true;
       if(D.cfg.zapPonte === null){ D.cfg.zapPonte = true; salvar(); }   // 1ª vez com a extensão nova: liga o envio pelo PC
       praExt({tipo:'ligar', ligada: ponteZap()});
       const zf = $('#zf'); if(zf) delete zf.dataset.j; pintaZap(); despachaZap(); } }
@@ -1288,17 +1509,24 @@ addEventListener('message', async e => {
 praExt({tipo:'oi'});
 // Envio pelo PC: no celular ou no PC a resposta vai pra uma FILA na nuvem; a aba do app no PC (com a extensão) passa pro WhatsApp Web.
 const ponteZap = () => D.cfg.zapPonte !== false;   // padrão = pelo WhatsApp do PC (o número de teste da Meta não entrega no Brasil: erro 130497)
-function despachaZap(){
+async function despachaZap(){
   if(!EXT || !ponteZap()) return;
   // aviso de FIADO = texto igual ao do fiado de uma venda das últimas 24 h desse cliente → a extensão deixa ir pra cliente novo
   const avisos = new Set(D.vendas.filter(v => v.forma==='fiado' && Date.now() - new Date(v.data) < 864e5).map(v => v.cli + '|' + textoFiado(cliPor(v.cli), v.qtd, v.qtd*v.preco)));
-  const lista = Object.values(MSG.m).filter(m => m.entrega === 'fila').map(m => ({fila:m.id, tel:m.tel, texto:m.texto, fiado:avisos.has(m.cli + '|' + m.texto)}));
+  const lista = [];
+  for(const m of Object.values(MSG.m).filter(m => m.entrega === 'fila')){
+    const o = {fila:m.id, tel:m.tel, texto:m.tipo==='audio' ? '' : m.texto, tipo:m.tipo || 'text', fiado:avisos.has(m.cli + '|' + m.texto)};
+    if(m.tipo === 'audio'){   // áudio de cobrança: o app baixa o arquivo e entrega pronto pra extensão (a página do WhatsApp não baixa de fora)
+      if(EXTV < 5){ if(!despachaZap.av){ despachaZap.av = 1; toast('atualize a extensão (recarregar) pra enviar áudio'); } continue; }
+      o.arq = await audioDados(m.midia && m.midia.path); o.seg = (m.midia && m.midia.seg) || 0; if(!o.arq) continue; }
+    lista.push(o);
+  }
   if(lista.length) praExt({tipo:'enviar', lista});
 }
 setInterval(despachaZap, 10000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
 function janelaZap(c){ if(ponteZap()) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
   const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
-async function responderZap(c, texto){
+async function responderZap(c, texto, depois){
   texto = (texto||'').trim(); if(!texto) return;
   if(ponteZap()){
     const tel = c.tel || ((c.cli && D.clientes.find(x => x.id === c.cli)) || {}).tel;
@@ -1312,6 +1540,7 @@ async function responderZap(c, texto){
       MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
       guardaMsg(); telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
       if(EXT) despachaZap(); else toast('na fila: sai pelo PC (WhatsApp Web aberto)');
+      if(depois) depois();
     }catch(e){
       toast('não foi pra fila: ' + e.message);
       if(!RASC[c.k]){ RASC[c.k] = texto; const z2 = $('#zt'); if(z2 && zapTela===c.k){ z2.value = texto; cresceZap(z2); } }
@@ -1354,7 +1583,15 @@ async function anotar(mid, forma){
   toast(`${forma==='fiado'?'fiado anotado':'venda anotada'} · ${R(m.sugestao.valor)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==vid); salvar(); marcar([mid, ...irmas],'nova'); tudo(); toast('desfeito'); });
 }
 $('#btZap').onclick = $('#navZap').onclick = ()=>{ telaZap(); if(usuario) sincronizar(); };
-$('#folha').addEventListener('close', ()=>{ zapTela = null; const f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k; });
+$('#folha').addEventListener('close', ()=>{ zapTela = null; const f = $('#folha'); f._tela = null;
+  setTimeout(()=>{ if(!f.open){ f.classList.remove('zap'); delete f.dataset.k; } }, 280); });   // espera a folha terminar de sair (transição suave)
+// troca de tela dentro da folha (Menu → Dados, ZAP → conversa…): o conteúdo entra deslizando; voltar desliza pro outro lado
+function troca(f, tela){
+  if(f._tela === tela) return; const antes = f._tela; f._tela = tela; if(!antes || !f.open) return;
+  const volta = tela === 'menu' || tela === 'zap';
+  f.classList.remove('troca', 'volta'); void f.offsetWidth; f.classList.add('troca'); if(volta) f.classList.add('volta');
+  clearTimeout(f._tt); f._tt = setTimeout(()=>f.classList.remove('troca', 'volta'), 340);
+}
 
 // ===== Teclado no PC =====
 document.addEventListener('keydown',e=>{
@@ -1385,9 +1622,22 @@ function pendentes(s = lerSinc()){
     p[tab] = {muda: D[tab].filter(o => s[tab][o.id] !== aqui[o.id]).map(o => linha(tab, o)), some: Object.keys(s[tab]).filter(id => !(id in aqui))};
     p.total += p[tab].muda.length + p[tab].some.length;
   }
-  p.cfg = (JSON.stringify(D.cfg) !== s.cfg && (s.cfg !== null || cfgLocalVence || s.ate)) ? D.cfg : null;   // 1ª vez: config da nuvem vence, a não ser que ele tenha mandado a do aparelho
+  // config: sobe SÓ o campo que mudou neste aparelho (antes subia tudo e a cópia velha de outro aparelho apagava o que ele salvou)
+  p.cfgMuda = [];
+  if(JSON.stringify(D.cfg) !== s.cfg && (s.cfg !== null || cfgLocalVence || s.ate)){   // 1ª vez: config da nuvem vence, a não ser que ele tenha mandado a do aparelho
+    let foto = null; try{ foto = s.cfg ? JSON.parse(s.cfg) : null; }catch(e){}
+    p.cfgMuda = Object.keys(D.cfg).filter(k => !foto || JSON.stringify(D.cfg[k]) !== JSON.stringify(foto[k]));
+  }
+  p.cfg = p.cfgMuda.length ? D.cfg : null;
   if(p.cfg) p.total++;
   return p;
+}
+// nuvem + campos que mudaram aqui; listas de datas (cobrados, etapas, áudios) juntam cliente a cliente
+const CFG_MAPA = ['cobrados', 'etapas', 'audios'];
+function juntaCfg(nuvem, aqui, campos){
+  const r = Object.assign({}, nuvem);
+  (campos || []).forEach(k => { r[k] = CFG_MAPA.includes(k) && aqui[k] && typeof aqui[k] === 'object' ? Object.assign({}, nuvem[k] || {}, aqui[k]) : aqui[k]; });
+  return r;
 }
 async function enviar(){
   const p = pendentes(); if(!p.total) return;
@@ -1398,7 +1648,12 @@ async function enviar(){
     }
     if(p[tab].some.length){ const {error} = await sb.from(tab).update({apagado:true}).in('id', p[tab].some); if(error) throw error; }
   }
-  if(p.cfg){ const {error} = await sb.from('config').upsert({dados:p.cfg}, {onConflict:'user_id'}); if(error) throw error; }
+  if(p.cfg){
+    const {data:cf, error:e0} = await sb.from('config').select('dados').maybeSingle(); if(e0) throw e0;
+    const dados = juntaCfg(cf ? cf.dados : {}, D.cfg, p.cfgMuda);
+    const {error} = await sb.from('config').upsert({dados}, {onConflict:'user_id'}); if(error) throw error;
+    D.cfg = Object.assign({}, PADRAO.cfg, dados);
+  }
 }
 // Baixa só o que mudou desde a última vez (margem de 10 min) e junta com o que ainda não subiu.
 async function baixar(){
@@ -1431,7 +1686,7 @@ async function baixar(){
     D[tab] = [...srv[tab].values()];
   }
   D.vendas.sort((a, b) => a.data < b.data ? -1 : 1); D.pagamentos.sort((a, b) => a.data < b.data ? -1 : 1);
-  if(cf){ const c = Object.assign({}, PADRAO.cfg, cf.dados); nova.cfg = JSON.stringify(c); if(!p.cfg) D.cfg = c; }
+  if(cf){ const c = Object.assign({}, PADRAO.cfg, cf.dados); nova.cfg = JSON.stringify(c); D.cfg = Object.assign({}, PADRAO.cfg, juntaCfg(c, D.cfg, p.cfgMuda)); }
   localStorage.setItem(K_SINC, JSON.stringify(nova));
   if(nova.cfg !== null) cfgLocalVence = false;
 }
