@@ -1,5 +1,5 @@
 // Guarda o app no celular pra abrir sem internet. Trocar a versão quando mudar o app.
-const VERSAO = 'paodemel-33';
+const VERSAO = 'paodemel-34';
 const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js';   // login/nuvem: guardada pra abrir sem internet
 const ARQS = ['./', 'index.html', 'manifest.json', 'icone.svg', LIB];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ARQS))); self.skipWaiting(); });

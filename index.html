@@ -2180,7 +2180,19 @@ addEventListener('message', async e => {
   }
   else if(m.tipo === 'msgs'){
     if(!sb || !usuario || !m.lista || !m.lista.length) return;
-    m.lista.forEach(x => delete x.arq);   // arquivo da foto/áudio: subir pro Storage = próxima parte (por ora só o texto)
+    // foto/áudio/documento (26/11): a extensão manda o arquivo pronto (foto já reduzida) → sobe pro Storage "zap" e a mensagem guarda o caminho
+    for(const x of m.lista){
+      const a = x.arq; delete x.arq;
+      if(TESTE || typeof a !== 'string' || !a.startsWith('data:') || a.length > 6e6) continue;
+      try{
+        const b = await (await fetch(a)).blob(), mime = b.type || x.mime || '';
+        const ext = /jpe?g/.test(mime) ? 'jpg' : /png/.test(mime) ? 'png' : /webp/.test(mime) ? 'webp' : /ogg|opus/.test(mime) ? 'ogg' : /mp4|m4a|aac/.test(mime) ? 'm4a' : /mpeg/.test(mime) ? 'mp3' : /pdf/.test(mime) ? 'pdf' : 'bin';
+        const path = usuario.id + '/rec/' + String(x.id).replace(/[^\w-]/g, '').slice(0, 80) + '.' + ext;
+        const {error} = await sb.storage.from('zap').upload(path, b, {contentType: mime || 'application/octet-stream', upsert:true});
+        if(error) throw new Error(error.message);
+        x.midia = {path, mime, nome: x.arqNome || '', seg: +x.seg || 0};
+      }catch(e){ console.warn('mídia não subiu:', e.message); }
+    }
     const {data, error} = TESTE ? {data:{ok:true}, error:null} : await sb.functions.invoke('zap-extensao', {body:{msgs:m.lista}});
     if(error || !data || !data.ok) return console.warn('zap-extensao:', error && error.message);
     if(TESTE) m.lista.forEach(x => MSG.m['web_' + x.id] = {id:'web_' + x.id, tel:x.tel, nome:x.nome, cli:(D.clientes.find(c => c.nome === x.nome) || {}).id || null, lado:x.lado, tipo:'text', texto:x.texto, data:x.data, sugestao:null, status:x.lado === 'enviada' ? 'lida' : 'nova', atualizado:'', entrega:x.lado === 'enviada' ? 'sent' : null});
