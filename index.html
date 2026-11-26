@@ -361,6 +361,7 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 .zsa button:active{background:#e7fce3}
 .zsa .nao{color:#667781;border-color:transparent;background:none}
 .zsg.ok2{border:0;background:none;color:#1fa855;font-weight:600;font-size:12px;padding:2px 4px;margin:2px 0 0}
+.zmbar{flex:none;background:#fff;border-top:1px solid #e9edef;padding:8px 10px 8px;font-size:12.5px;color:#54656f}.zml{display:flex;justify-content:space-between;align-items:center}.zmn{font-size:11px;opacity:.75;margin-top:5px}.zcb[disabled]{opacity:.4}.b.msel{outline:2px solid #00a884;outline-offset:1px;background-image:linear-gradient(#00a88426,#00a88426)}
 .zcob{flex:none;background:#fff;border-top:1px solid #e9edef;padding:8px 10px 6px;font-size:12.5px;color:#54656f;animation:zcobEntra .28s cubic-bezier(.2,.8,.2,1)}
 @keyframes zcobEntra{from{transform:translateY(12px);opacity:0}}
 .zcl{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -1521,11 +1522,24 @@ function okAuto(){
 }
 function okAbertos(){ return Object.entries(D.cfg.okPend || {}).filter(([cid, p]) => !p.fim && cliPor(cid) && deve(cid) > 0.004).map(([cid, p]) => ({cid, p, v:deve(cid)})); }
 function okFim(cid, fim){ D.cfg.okPend = {...D.cfg.okPend, [cid]: {...D.cfg.okPend[cid], fim}}; }
+// ===== AGRADECER (pedido dele 26/11): pagou (comprovante/ok confirmado ou Pix automático) → o app manda "obrigado", salva o contato no WhatsApp e o pagamento já cai na lista de RECEBIMENTOS =====
+function agradece(cid, valor, pid){
+  const cf = D.cfg; if(cf.agradece === false || !usuario || !sb || !ponteZap() || !(EXT || TESTE)) return;
+  cf.agradeceu = cf.agradeceu || {}; if(cf.agradeceu[pid]) return; cf.agradeceu[pid] = hoje();
+  const cl = cliPor(cid); if(!cl || !cl.tel || ehLoja(cl.tel)) return;
+  const z = Object.values(ZC.conv).find(x => chaveTel(x.tel) === chaveTel(cl.tel));
+  let nome = !pareceTel(cl.nome) ? cl.nome : (z && limpaPush(z.push)) || '';
+  if(nome && pareceTel(cl.nome) && !pareceTel(nome)) cl.nome = nome;   // só tinha o número: fica o nome do perfil dele
+  const prim = nome ? nome.split(' ')[0] : '';
+  const texto = (cf.msgObrigado || 'Recebi{nome}, {valor}! Muito obrigado pelo pagamento 🙏').replace('{nome}', prim ? ', ' + prim : '').replace('{valor}', 'R$ ' + v2(valor));
+  filaTexto(cl.tel, cid, texto).catch(e => console.warn('agradecer:', e.message));
+  if(nome && !pareceTel(nome) && z && !z.nome){ const zap = {...(cf.leZap || {})}; zap[z.tel] = {...(zap[z.tel] || {}), nome}; cf.leZap = zap; }   // salva o contato na agenda do WhatsApp
+}
 function okConfirma(cid){
   const o = okAbertos().find(x => x.cid === cid); if(!o) return;
   const pid = 'ok-' + cid + '-' + Date.parse(o.p.desde); if(D.pagamentos.some(p => p.id === pid)){ okFim(cid, 'pago'); salvar(); return tudo(); }   // trava: o mesmo "ok" não paga 2 vezes (id fixo, vale na nuvem também)
   const pg = {id:pid, data:hoje(), cli:cid, valor:o.v, forma:'pix'};
-  D.pagamentos.push(pg); okFim(cid, 'pago'); salvar(); tudo();
+  D.pagamentos.push(pg); okFim(cid, 'pago'); agradece(cid, o.v, pid); salvar(); tudo();
   toast('recebido ' + R(o.v) + ' no Pix (' + cliPor(cid).nome + ')', () => {
     D.pagamentos = D.pagamentos.filter(p => p.id !== pg.id); okFim(cid, null); salvar(); tudo(); });
 }
@@ -1575,6 +1589,11 @@ function nomeDoTexto(tx){   // "meu nome é Ana", "me chamo Ana", "aqui é a Ana
   const cid = LE_CID.some(c => semAc(c).startsWith(semAc(m[2] || '~')));
   return {nome:nomeBom(m[2] && !LE_STOP.has(semAc(m[2])) && !cid ? m[1] + ' ' + m[2] : m[1]), forca:/^sou/i.test(m[0]) ? 'media' : 'forte'};
 }
+function nomeDoEnviado(tx){   // "Oi Pedro! Anotei…", "Boa tarde, Maria Clara" → nome de quem recebeu (pedido dele 26/11: o nome que ele escreveu na cobrança aparece no Espeto)
+  const m = String(tx || '').match(/^\W*(?:oi|olá|ola|opa|oie|e aí|e ai|fala|bom dia|boa tarde|boa noite)[\s,!]+([A-ZÁÂÃÉÊÍÓÔÕÚÇ][a-záâãéêíóôõúç]{2,})/);
+  if(!m || LE_STOP.has(semAc(m[1])) || /^(tudo|td|pessoal|gente|querid|amig|vizinh)/i.test(semAc(m[1]))) return '';
+  return m[1];
+}
 function cidadeDoTexto(tx){   // "moro em Araucária", "sou de Contenda", "aqui em Curitiba", "entrega em Campo Largo?"
   const t = semAc(tx);
   for(const c of LE_CID){ if(new RegExp('\\b(moro|mora|sou|aqui|eh|e|fica|entrega|entregar|la|daqui)\\b.{0,12}\\b(em|de|no|na|do|da|pra|para)\\s+' + semAc(c) + '\\b').test(t)) return c; }
@@ -1601,7 +1620,7 @@ function leProps(forca){
     const base = {k, cid:c.cli || null, tel, noZap:!!c.z, agenda, quem:c.titulo, valor:d ? d.total : 0, desde:d ? d.maisAntiga : null};
     let pr = null, pg = null, nm = null, ci = null, env = null, vl = null;
     c.msgs.forEach(m => {
-      if(m.lado === 'enviada'){ env = m; return; }
+      if(m.lado === 'enviada'){ env = m; const ne = nomeDoEnviado(m.texto); if(ne) nm = {m, nome:ne, forca:'forte'}; return; }
       if(m.data < lim) return;
       const tx = m.texto || '', t = semAc(tx);
       if((d || pend) && m.data >= desde && (lePagou(t) || LE_PAG.test(t))){ const v = leValor(tx); if(v) vl = {v, m}; }
@@ -1685,9 +1704,9 @@ function leAplica(ps){
 function pixBaixa(){
   if(!usuario) return;
   const feito = D.cfg.pixFeito || {}, novos = D.pagamentos.filter(p => /^pix-/.test(p.id) && !feito[p.id]); if(!novos.length) return;
-  const zap = {...(D.cfg.leZap || {})}, pf = {...feito}, msgs = [];
+  const zap = {...(D.cfg.leZap || {})}, pf = {...feito}, msgs = [], agr = [];
   novos.forEach(p => {
-    pf[p.id] = hoje(); const c = cliPor(p.cli), resta = deve(p.cli);
+    pf[p.id] = hoje(); const c = cliPor(p.cli), resta = deve(p.cli); agr.push([p.cli, p.valor, p.id]);
     if(D.cfg.pixAbertos && D.cfg.pixAbertos[p.cli]){ const pa = {...D.cfg.pixAbertos}; delete pa[p.cli]; D.cfg.pixAbertos = pa; }
     if(D.cfg.okPend && D.cfg.okPend[p.cli] && !D.cfg.okPend[p.cli].fim) okFim(p.cli, 'pago');
     if(D.cfg.promessas && D.cfg.promessas[p.cli]){ const pr = {...D.cfg.promessas}; delete pr[p.cli]; D.cfg.promessas = pr; }
@@ -1695,7 +1714,7 @@ function pixBaixa(){
     if(z && resta <= 0.004) zap[z.tel] = {...(zap[z.tel] || {}), ok:1, arq:1, tiraAc:1};
     msgs.push(R(p.valor) + ' · ' + c.nome + (resta > 0.004 ? ' (ainda deve ' + R(resta) + ')' : ''));
   });
-  D.cfg.pixFeito = pf; D.cfg.leZap = zap; salvar();
+  D.cfg.pixFeito = pf; D.cfg.leZap = zap; salvar(); agr.forEach(a => agradece(...a));
   toast('Pix recebido: ' + msgs.join(' | '));
 }
 // ===== ETIQUETAS SEMPRE CERTAS (pedido dele 26/11): a cada 10 s (junto da sincronização) o app compara o que DEVERIA estar no WhatsApp com o que está e corrige.
@@ -1778,7 +1797,8 @@ function leAuto(){   // ligado por ele: aplica sozinho o certeiro (forte); "(con
 function conversas(){
   const g = {}, apg = D.cfg.zapApagou || {};   // apagou/limpou pelo app: mensagens até essa hora somem (a cópia na nuvem fica)
   const porTel = {}; D.clientes.forEach(cl => { if(cl.tel) porTel[chaveTel(cl.tel)] = cl.id; });   // mensagem do WhatsApp sem cliente = liga pelo número (senão COBRAR abria conversa vazia, 26/11)
-  Object.values(MSG.m).forEach(m => { if(m.entrega==='feita') return;   // da fila, já enviada (a cópia real "web_" aparece no lugar)
+  const ocultas = D.cfg.msgsOcultas || {};
+  Object.values(MSG.m).forEach(m => { if(m.entrega==='feita' || ocultas[m.id]) return;   // da fila, já enviada (a cópia real "web_" aparece no lugar) · ou apagada pelo app
     const a = apg[chaveTel(m.tel)]; if(a && m.data <= a.t) return;
     const ci = m.cli || porTel[chaveTel(m.tel)] || null, k = ci || m.tel; const c = (g[k] ||= {k, cli:ci, tel:m.tel, nome:'', msgs:[]});
     if(!c.tel && m.tel) c.tel = m.tel; c.msgs.push(m); if(m.nome) c.nome = m.nome; });
@@ -1894,7 +1914,7 @@ function menuSel(sel, sub){
     zapAcao(a); };
   $('#folha').appendChild(m);
 }
-const NOME_ACAO = {fixar:'fixada', desafixar:'desafixada', arquivar:'arquivada', desarquivar:'desarquivada', lida:'marcada como lida', naolida:'marcada como não lida',
+const NOME_ACAO = {apagarmsg:'apagada', fixar:'fixada', desafixar:'desafixada', arquivar:'arquivada', desarquivar:'desarquivada', lida:'marcada como lida', naolida:'marcada como não lida',
   silenciar:'silenciada', desilenciar:'sem silêncio', etiqueta:'etiquetada', apagar:'apagada', limpar:'limpa', contato:'salva na agenda'};
 function zapAcao(acao, extra = {}){
   const sel = conversas().filter(c=>zapSel && zapSel.has(c.k)); if(!sel.length) return;
@@ -1928,6 +1948,10 @@ function confirmaLote(acao, cs){   // ação que NÃO volta: 2 toques
 }
 function agiu(r){   // resposta da extensão: o que mudou no WhatsApp
   const p = PED_LOTE[r.pedido]; if(!p) return; delete PED_LOTE[r.pedido];
+  if(r.acao === 'apagarmsg'){ const x = (r.lista || [])[0] || {};
+    if(x.ok){ D.cfg.msgsOcultas = {...(D.cfg.msgsOcultas || {}), ...Object.fromEntries(p.msgs.map(i => [i, 1]))}; p.msgs.forEach(i => delete MSG.m[i]); guardaMsg(); salvar(); toast(p.msgs.length + ' mensagem' + (p.msgs.length > 1 ? 's' : '') + ' apagada' + (p.msgs.length > 1 ? 's' : '')); }
+    else toast('não apagou: ' + (x.erro || 'erro'));
+    MSEL.clear(); const zm = $('#zm'); if(zm) zm._h = ''; if(zapTela) telaConversa(zapTela, true); pintaBarraMsg(zapTela); return; }
   const lista = r.lista || [], ok = lista.filter(x=>x.ok), ruim = lista.filter(x=>!x.ok), a = r.acao, agora = new Date().toISOString();
   ok.forEach(x => { const z = ZC.conv[x.tel]; if(!z) return;
     if(a==='fixar') z.fixada = Math.floor(Date.now()/1000); else if(a==='desafixar') z.fixada = 0;
@@ -2158,12 +2182,48 @@ async function carregaMidia(el){
     if(x.tagName==='A') x.href = u; else x.src = u;
     if(x.tagName==='IMG') x.onclick = () => open(u, '_blank'); });
 }
+// ===== APAGAR MENSAGEM (pedido dele 26/11): segurar um balão seleciona; mais toques somam; barra com APAGAR PARA MIM / PARA TODOS (2 toques, não volta) =====
+const MSEL = new Set(), BARRA_MSG = {arm:''}; let SEGUROU = false;
+const PRAZO_TODOS = 2 * 864e5;   // o WhatsApp só deixa "apagar para todos" por um tempo (cerca de 2 dias)
+function ligaSelecaoMsg(k){
+  const zm = $('#zm'); let t = 0, x0 = 0, y0 = 0;
+  zm.addEventListener('pointerdown', e => { const bl = e.target.closest('[data-mid]'); if(!bl || e.target.closest('button,a,audio')) return; SEGUROU = false; x0 = e.clientX; y0 = e.clientY; clearTimeout(t);
+    t = setTimeout(() => { SEGUROU = true; if(navigator.vibrate) navigator.vibrate(15); toggleMsg(bl.dataset.mid, k); setTimeout(() => SEGUROU = false, 400); }, 450); });
+  const solta = () => clearTimeout(t); zm.addEventListener('pointerup', solta); zm.addEventListener('pointercancel', solta); zm.addEventListener('scroll', solta, {passive:true});
+  zm.addEventListener('pointermove', e => { if(Math.abs(e.clientX - x0) > 8 || Math.abs(e.clientY - y0) > 8) clearTimeout(t); });
+  zm.addEventListener('contextmenu', e => { const bl = e.target.closest('[data-mid]'); if(bl){ e.preventDefault(); clearTimeout(t); if(!SEGUROU) toggleMsg(bl.dataset.mid, k); } });
+}
+function toggleMsg(id, k){ MSEL.has(id) ? MSEL.delete(id) : MSEL.add(id); BARRA_MSG.arm = ''; const zm = $('#zm'); if(zm) zm._h = ''; telaConversa(k, true); pintaBarraMsg(k); }
+function pintaBarraMsg(k){
+  const el = $('#zmbar'); if(!el) return;
+  const c = conversas().find(x => x.k === k); if(!c || !MSEL.size){ el.hidden = true; el.innerHTML = ''; return; }
+  const sel = c.msgs.filter(m => MSEL.has(m.id)), n = sel.length, web = sel.every(m => /^web_/.test(m.id));
+  const todosOk = web && sel.every(m => m.lado === 'enviada' && Date.now() - new Date(m.data) < PRAZO_TODOS);
+  const arm = x => BARRA_MSG.arm === x;
+  el.hidden = false;
+  el.innerHTML = `<div class="zml"><b>${n} selecionada${n > 1 ? 's' : ''}</b><button class="zcx" data-mx aria-label="cancelar">✕</button></div>
+    <div class="zcbs">${web ? `<button class="zcb${arm('mim') ? ' arm' : ''}" data-ma="mim">${arm('mim') ? 'TOQUE DE NOVO PRA APAGAR' : 'APAGAR PARA MIM'}</button>
+    <button class="zcb${arm('todos') ? ' arm' : ''}" data-ma="todos" ${todosOk ? '' : 'disabled'}>${arm('todos') ? 'TOQUE DE NOVO PRA APAGAR' : 'APAGAR PARA TODOS'}</button>` : '<span>Só dá pra apagar mensagens que estão no WhatsApp do PC (as da fila ou antigas não).</span>'}</div>
+    ${web && !todosOk ? '<div class="zmn">"Para todos" só vale pras que <b>você</b> mandou, em até 2 dias.</div>' : ''}`;
+  el.onclick = ev => { const b = ev.target.closest('[data-mx],[data-ma]'); if(!b || b.disabled) return;
+    if(b.dataset.mx !== undefined){ MSEL.clear(); BARRA_MSG.arm = ''; const zm = $('#zm'); if(zm) zm._h = ''; telaConversa(k, true); return pintaBarraMsg(k); }
+    const a = b.dataset.ma; if(BARRA_MSG.arm !== a){ BARRA_MSG.arm = a; clearTimeout(BARRA_MSG.t); BARRA_MSG.t = setTimeout(() => { BARRA_MSG.arm = ''; pintaBarraMsg(k); }, 4000); return pintaBarraMsg(k); }
+    apagaMsgs(c, [...MSEL], a === 'todos'); };
+}
+function apagaMsgs(c, ids, todos){
+  if(!TESTE && EXTV < 8) return toast('extensão antiga: ⚙ → atualizar extensão');
+  if(!(TESTE || EXT)) return toast('apagar mensagem: só no PC com o WhatsApp Web aberto');
+  const tel = c.z ? c.z.tel : c.tel, pedido = 'l' + (++nEtq); PED_LOTE[pedido] = {acao:'apagarmsg', extra:{ids}, fora:0, msgs:ids};
+  BARRA_MSG.arm = ''; toast('apagando no WhatsApp…');
+  if(TESTE) return setTimeout(() => agiu({pedido, acao:'apagarmsg', lista:[{tel, ok:true}]}), 600);
+  praExt({tipo:'lote', acao:'apagarmsg', tels:[tel], msgs:ids.map(i => i.replace(/^web_/, '')), todos, certeza:true, pedido});
+}
 function baloes(c){
   let dia = '', ant = null, h = '';
   for(const m of c.msgs.slice(-200).concat(PEND_ZAP.filter(p=>p.k===c.k))){
     const d = diaZap(m.data); if(d!==dia){ dia = d; ant = null; h += `<div class="zd">${d}</div>`; }
     const eu = m.lado==='enviada', cauda = ant!==m.lado; ant = m.lado;
-    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${m.tipo === 'pix' && pixHtml(m) ? '' : fmtZap(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
+    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}${MSEL.has(m.id)?' msel':''}" data-mid="${esc(m.id)}">${midiaHtml(m)}<span class="tx">${m.tipo === 'pix' && pixHtml(m) ? '' : fmtZap(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
   }
   return h;
 }
@@ -2177,11 +2237,13 @@ function telaConversa(k, soRepinta){
       <span class="zh"><b>${esc(c.titulo)}</b><small id="zhs"></small></span>
       ${Object.keys(ZC.etq).length ? `<button class="zec" id="zet" title="etiquetas" aria-label="etiquetas"></button>` : ''}
       <button class="zi" id="zr" title="abrir no meu WhatsApp" aria-label="abrir no meu WhatsApp">${ZI.sai}</button></div>
-      <div class="zm" id="zm"></div><div class="zcob" id="zcob" hidden></div><div class="zf" id="zf"></div>`;
+      <div class="zm" id="zm"></div><div class="zmbar" id="zmbar" hidden></div><div class="zcob" id="zcob" hidden></div><div class="zf" id="zf"></div>`;
     $('#fx').onclick = ()=>{ COBRA = null; telaZap(); };
     if($('#zet')) $('#zet').onclick = ()=>menuEtq(k);
     $('#zr').onclick = ()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, RASC[k] || '');
-    $('#zm').onclick = e=>{ const b = e.target.closest('button'); if(!b) return;
+    MSEL.clear(); BARRA_MSG.arm = '';
+    ligaSelecaoMsg(k);
+    $('#zm').onclick = e=>{ const b = e.target.closest('button'); if(!b){ const bl = e.target.closest('[data-mid]'); if(bl && MSEL.size && !SEGUROU){ toggleMsg(bl.dataset.mid, k); } return; }
       if(b.dataset.cpix){ const k = b.dataset.cpix; (navigator.clipboard ? navigator.clipboard.writeText(k) : Promise.reject()).then(()=>toast('chave Pix copiada'), ()=>toast('chave: ' + k)); }
       else if(b.dataset.v) anotar(b.dataset.v, b.dataset.f);
       else if(b.dataset.ig) marcar([b.dataset.ig], 'ignorada');
@@ -2558,7 +2620,7 @@ function pendentes(s = lerSinc()){
   return p;
 }
 // nuvem + campos que mudaram aqui; listas de datas (cobrados, etapas, áudios) juntam cliente a cliente
-const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
+const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos', 'msgsOcultas', 'agradeceu'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
 function juntaCfg(nuvem, aqui, campos){
   const r = Object.assign({}, nuvem);
   (campos || []).forEach(k => { r[k] = CFG_MAPA.includes(k) && aqui[k] && typeof aqui[k] === 'object' ? Object.assign({}, nuvem[k] || {}, aqui[k]) : aqui[k]; });
