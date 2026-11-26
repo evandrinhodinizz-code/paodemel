@@ -456,6 +456,7 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
     <section class="pag mes">
       <h2 class="coltit">MÊS</h2>
       <div id="mes"></div>
+      <div id="receb"></div>
     </section>
   </div>
 
@@ -857,6 +858,51 @@ function pintaMes(){
       <div class="l"><span>LUCRO</span><span>${v2(b.lucro)}</span></div>`:''}
       <div class="miuda">Lucro estimado: custo fixo de ${R(D.cfg.custo)} por pão (ingredientes, embalagem, avó, gás/luz). O exato vem com o extrato do banco.</div>
     </div></div>`;
+  pintaReceb();
+}
+
+// ===== RECEBIMENTOS (protótipo 26/11): recebido semana/mês · vai pagar · cobrando =====
+const diaCurto = iso => { const d = new Date(iso), z = new Date(new Date().setHours(0,0,0,0)), n = Math.round((new Date(d).setHours(0,0,0,0) - z) / 864e5);
+  return n === 0 ? 'hoje' : n === 1 ? 'amanhã' : n === -1 ? 'ontem' : d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','') + ' ' + dataBR(iso); };
+function recebidoDesde(ini){
+  const vs = D.vendas.filter(v => v.forma !== 'fiado' && new Date(v.data) >= ini), pg = D.pagamentos.filter(p => new Date(p.data) >= ini);
+  const forma = {pix:0, dinheiro:0, cartao:0}; vs.forEach(v => forma[v.forma] = (forma[v.forma] || 0) + v.qtd * v.preco);
+  const fiado = pg.reduce((s, p) => s + p.valor, 0), naHora = Object.values(forma).reduce((s, x) => s + x, 0);
+  return {vs, pg, forma, fiado, naHora, total: naHora + fiado};
+}
+function pintaReceb(){
+  const el = $('#receb'); if(!el) return;
+  const hj = new Date(new Date().setHours(0,0,0,0)), seg = new Date(hj); seg.setDate(hj.getDate() - (hj.getDay() + 6) % 7);
+  const s = recebidoDesde(seg), m = recebidoDesde(new Date(hj.getFullYear(), hj.getMonth(), 1));
+  const nome = cid => esc((cliPor(cid) || {}).nome || '?');
+  const blocoForma = r => ['pix','dinheiro','cartao'].filter(f => r.forma[f]).map(f => `<div class="l" style="color:#8a8a8a"><span>· ${NOME_F[f]}</span><span>${v2(r.forma[f])}</span></div>`).join('')
+    + `<div class="l" style="color:#8a8a8a"><span>· FIADO RECEBIDO</span><span>${v2(r.fiado)}</span></div>`;
+  // o que entrou na semana: fiado pago um por um; venda na hora junta por dia
+  const porDia = {}; s.vs.forEach(v => { const k = v.data.slice(0,10); (porDia[k] ||= {n:0, t:0, data:v.data}); porDia[k].n++; porDia[k].t += v.qtd * v.preco; });
+  const entrou = [...s.pg.map(p => ({data:p.data, txt:`${nome(p.cli)} · fiado ${NOME_F[p.forma] ? '(' + NOME_F[p.forma].toLowerCase() + ')' : ''}`, v:p.valor})),
+    ...Object.values(porDia).map(d => ({data:d.data, txt:`${d.n} venda${d.n === 1 ? '' : 's'} na hora`, v:d.t}))].sort((a, b) => a.data < b.data ? 1 : -1);
+  const devs = devedores();
+  const vai = devs.map(d => ({d, p:prometeu(d.cid, d)})).filter(x => x.p).sort((a, b) => a.p.ate < b.p.ate ? -1 : 1);
+  const vaiTot = vai.reduce((t, x) => t + (x.p.valor || x.d.total), 0);
+  const cob = devs.map(d => ({d, e:etapaDe(d.cid, d)})).filter(x => x.e && !prometeu(x.d.cid, x.d)).sort((a, b) => b.e.n - a.e.n || (a.e.d < b.e.d ? -1 : 1));
+  const rotE = n => n >= 3 ? '3ª ÁUDIO → LIGAR' : n === 2 ? '2ª ÁUDIO' : '1ª TEXTO';
+  el.innerHTML = `<div class="janela" style="margin-top:14px"><div class="cupom">
+    <h4>RECEBIMENTOS</h4>
+    <div class="c">SEMANA DESDE ${dataBR(seg)} · MÊS ${hj.toLocaleDateString('pt-BR',{month:'long'}).toUpperCase()}</div>
+    <hr>
+    <div class="l" style="font-size:14px"><b>RECEBIDO NA SEMANA</b><b>${v2(s.total)}</b></div>
+    ${blocoForma(s)}
+    <div class="l" style="font-size:14px;margin-top:10px"><b>RECEBIDO NO MÊS</b><b>${v2(m.total)}</b></div>
+    ${blocoForma(m)}
+    <hr><div class="c">O QUE ENTROU NA SEMANA</div>
+    ${entrou.length ? entrou.map(x => `<div class="l"><span>${diaCurto(x.data)} · ${x.txt}</span><span>${v2(x.v)}</span></div>`).join('') : '<div class="miuda">Nada ainda esta semana.</div>'}
+    <hr><div class="c">VAI PAGAR · ${vai.length} · ${R(vaiTot)}</div>
+    ${vai.length ? vai.map(x => `<div class="l"><span><b>${diaCurto(x.p.ate).toUpperCase()}</b> · ${nome(x.d.cid)}</span><span>${v2(x.p.valor || x.d.total)}</span></div>`).join('') : '<div class="miuda">Ninguém prometeu dia.</div>'}
+    <hr><div class="c">COBRANDO · ${cob.length} · ${R(cob.reduce((t, x) => t + x.d.total, 0))}</div>
+    ${cob.length ? cob.map(x => { const c = D.cfg.cobrados[x.d.cid] || x.e.d, n = dias(c);
+      return `<div class="l"${x.e.n >= 3 ? ' style="color:var(--verm)"' : ''}><span>${nome(x.d.cid)} · ${rotE(x.e.n)} · ${n === 0 ? 'hoje' : 'há ' + n + 'd'}</span><span>${v2(x.d.total)}</span></div>`; }).join('') : '<div class="miuda">Ninguém em cobrança agora.</div>'}
+    <div class="miuda">Recebido = venda na hora (pix/dinheiro/cartão) + fiado pago. "Vai pagar" vem do que o cliente escreveu no ZAP; quem prometeu sai do "cobrando" até o dia.</div>
+  </div></div>`;
 }
 
 // ===== Cliente novo / editar =====
@@ -2471,6 +2517,15 @@ function carregaTeste(){
   if(ultEu){ delete MSG.m[ultEu.id]; ultEu.id = 'web_t1'; ultEu.entrega = 'sent'; MSG.m.web_t1 = ultEu; }
   setTimeout(() => gravaEspelho({acks:{t1:'delivered'}}), 6000); setTimeout(() => gravaEspelho({acks:{t1:'read'}}), 12000);
   setTimeout(() => { const c = D.clientes[0], z = ZC.conv[c.tel]; if(z){ okAuto(); z.etiquetas = ['2']; okAuto(); pintaZap(); } }, 4000);   // teste: cliente que deve ganha 'ok' → sino pergunta se pagou
+  // recebimentos (26/11): vendas na hora e fiado pago nesta semana, 2 promessas, 3 em cobrança
+  [0, 1, 2, 4].forEach((dd, i) => [['pix', 3], ['dinheiro', 2], ['cartao', 1]].forEach(([f, q], j) => { if((i + j) % 2 === 0 || f === 'pix')
+    D.vendas.push({id:'tr' + i + j, data:new Date(agora - dd * 864e5 - j * H).toISOString(), cli:D.clientes[(i + j) % 12].id, qtd:q, preco:12.5, forma:f}); }));
+  D.pagamentos.push({id:'tp1', data:new Date(agora - 1 * 864e5).toISOString(), cli:'tc0', valor:12.5, forma:'pix'}, {id:'tp2', data:new Date(agora - 2 * 864e5).toISOString(), cli:'tc9', valor:12.5, forma:'dinheiro'});
+  const dv = cid => (D.vendas.filter(v => v.cli === cid && v.forma === 'fiado').sort((a, b) => a.data < b.data ? -1 : 1)[0] || {}).data;
+  const emDias = n => new Date(new Date().setHours(12, 0, 0, 0) + n * 864e5).toISOString();
+  D.cfg.promessas = {tc12:{ate:emDias(2), valor:37.5, desde:dv('tc12')}, tc3:{ate:emDias(1), desde:dv('tc3')}};
+  D.cfg.etapas = {tc6:{n:1, d:emDias(-2), desde:dv('tc6')}, tc0:{n:2, d:emDias(-1), desde:dv('tc0')}, tc9:{n:3, d:emDias(-4), desde:dv('tc9')}};
+  D.cfg.cobrados = {...D.cfg.cobrados, tc6:emDias(-2), tc0:emDias(-1), tc9:emDias(-4)};
   usuario = {id:'teste', email:'teste'}; let n = 0;
   if(sb) Object.getPrototypeOf(sb.functions).invoke =async (nome, op) => { await new Promise(r => setTimeout(r, 700));
     if(++n % 3 === 0) return {data:null, error:{message:'falha de teste', context:{json:async () => ({erro:'falha de teste (modo teste)'})}}};
