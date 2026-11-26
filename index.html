@@ -189,6 +189,12 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .nota .ic button[data-apaga]{color:var(--verm)}
 .vazio-esp{margin:30px 20px;text-align:center;font-family:"Special Elite";font-size:18px;opacity:.7}
 .pendwa{margin:18px 12px 8px;background:#fff8d6;border-radius:3px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}.pendwa>.bt{width:100%;font-size:13px}.pendl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #c9b98a;font-size:14px}.pendl .bt{padding:6px 10px;font-size:12px;flex:none}.pendwa .miuda{font-size:12px;opacity:.7;margin-top:6px}
+.cttopo{display:block;width:calc(100% - 24px);margin:8px 12px 4px;font-size:14px}
+.ctmsg{background:#fff8d6;border-radius:6px;padding:8px;margin:4px 0 8px}.ctlista{max-height:38vh;overflow:auto;margin:6px 0}
+.ctit{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #c9b98a;font-size:13px}.ctit span:last-child{flex:none;font-weight:600}
+.ctit.c-ok span:last-child{color:#2e7d32}.ctit.c-err{flex-wrap:wrap}.ctit.c-err span:last-child{color:#b3261e;flex:1 1 100%;font-weight:400;font-size:12px}.ctit.c-ind span:last-child{color:#a06a00}.ctit.c-fal,.ctit.c-pul{opacity:.6}
+#ctbar{position:fixed;left:50%;bottom:calc(74px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;border:0;border-radius:20px;padding:8px 14px;background:#3b2a1a;color:#f5e6c8;font:600 13px system-ui;box-shadow:0 3px 10px rgba(0,0,0,.3);max-width:92vw}
+#ctbar.fim{background:#2e7d32;color:#fff}
 
 /* ===== MÊS ===== */
 .maco{position:relative;height:96px;margin:6px 40px 18px}
@@ -645,6 +651,7 @@ function pintaEspeto(){
       && (!filtro || d.cli.nome.toLowerCase().includes(filtro) || (dig.length>=3 && String(d.cli.tel||'').includes(dig))))
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
+   + (() => { const ft = filaTodos(); return CT ? `<button class="bt cheio cttopo" id="cobTodos">${esc(resumoTodos().txt)} ›</button>` : ft.length ? `<button class="bt cheio cttopo" id="cobTodos">COBRAR TODOS · ${ft.length} · ${R(ft.reduce((s,d)=>s+d.total,0))}</button>` : ''; })()
    + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d); return `
     <div class="nota" data-nota="${d.cid}"><div class="ic"><button data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
       <div class="l"><span>${d.qtd} un · há ${n} dia${n===1?'':'s'}</span><span class="velha">${n>=30?'RISCO DE CALOTE':n>7?'COBRAR JÁ':''}</span></div>
@@ -657,6 +664,7 @@ function pintaEspeto(){
   $$('#espeto [data-apaga]').forEach(b=>b.onclick=()=>{ const cid = b.dataset.apaga, abertas = (fiados()[cid]||[]).filter(f=>f.falta>0.004);
     if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
   $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
+  const ctb = $('#cobTodos'); if(ctb) ctb.onclick = cobrarTodos;
   $$('#espeto [data-pend]').forEach(b=>b.onclick=()=>anotaPend(b.dataset.pend));
   const pa = $('#pendAbre'); if(pa) pa.onclick = () => { pendAberto = !pendAberto; pintaEspeto(); };
   $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
@@ -964,6 +972,91 @@ function cobrarFila(){
   $('#fa').onclick=()=>{ abreLink(d.cli.tel, $('#tx').value); marcaEtapa(d.cid, 1); cobrarFila(); };
   if(!dlg.open) dlg.showModal();
 }
+// ===== COBRAR TODOS (pedido dele 26/11): manda a mensagem de cobrança pra toda a fila do dia, 1 por minuto, pelo WhatsApp do PC =====
+// Mais de 20 = 1 a cada 3 min (a extensão segura 20/h e 80/dia). Fechar ou recarregar o app = para; tocar de novo continua de onde parou
+// (quem já foi cobrado hoje sai da fila). A extensão ainda recusa quem nunca te mandou mensagem (trava do motor.js).
+let CT = null;   // {itens:[{cid, nome, total, fila, st}], i, prox, timer, passo}
+const filaTodos = () => filaCobrar().filter(d => !ehLoja(d.cli.tel));
+const passoTodos = n => TESTE ? 4000 : (n > 20 ? 180000 : 60000);
+const minTxt = ms => { const m = Math.ceil(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60 ? m % 60 + ' min' : ''); };
+function cobrarTodos(){
+  if(!D.cfg.chavePix){ toast('coloque a chave Pix no Menu ☰ primeiro'); return telaSecao('dados'); }
+  if(!(ponteZap() && sb && usuario)) return toast('COBRAR TODOS só pelo PC, com o WhatsApp Web aberto');
+  if(CT) return painelTodos();
+  const fila = filaTodos(), dlg = $('#dlg');
+  if(!fila.length) return toast('ninguém pra cobrar hoje');
+  const passo = passoTodos(fila.length), d0 = fila[0];
+  dlg.innerHTML = `<h3>Cobrar todos · ${fila.length} cliente${fila.length===1?'':'s'}</h3>
+    <div class="peq">1 mensagem a cada <b>${passo >= 180000 ? '3 minutos' : 'minuto'}</b> · leva uns <b>${minTxt((fila.length - 1) * passo + 1)}</b> · total ${R(fila.reduce((s,d)=>s+d.total,0))}.${fila.length > 20 ? ' Mais de 20: vai devagar (máx. 20 por hora) pra o WhatsApp não bloquear.' : ''} Deixe o app e o WhatsApp Web abertos.</div>
+    <label>A 1ª VAI ASSIM (${esc(d0.cli.nome)})</label><div class="peq ctmsg">${esc(preencher(D.cfg.msgCobrar, d0.cli, {valor:v2(d0.total), qtd:d0.qtd}))}</div>
+    <div class="peq ctlista">${fila.map(d=>`${esc(d.cli.nome)} · ${R(d.total)} · ${dias(d.maisAntiga)}d`).join('<br>')}</div>
+    <div class="linha"><button class="bt" id="ctx">VOLTAR</button><button class="bt cheio" id="cts">COMEÇAR</button></div>
+    <p class="peq">Cada um recebe a mensagem com o nome e o valor dele. Quem nunca te mandou mensagem é pulado (trava contra bloqueio).</p>`;
+  $('#ctx').onclick = () => dlg.close();
+  $('#cts').onclick = () => { const b = $('#cts'); if(!b._arm){ b._arm = 1; b.textContent = 'TOQUE DE NOVO PRA COMEÇAR'; setTimeout(()=>{ if(b.isConnected){ b._arm = 0; b.textContent = 'COMEÇAR'; } }, 4000); return; }
+    CT = {itens: fila.map(d => ({cid:d.cid, nome:d.cli.nome, total:d.total, fila:'', st:'falta'})), i:0, prox:0, timer:null, passo};
+    vaiTodos(); painelTodos(); };
+  dlg.showModal();
+}
+async function vaiTodos(){
+  if(!CT) return;
+  const it = CT.itens[CT.i]; if(!it) return fimTodos();
+  const d = devedores().find(x => x.cid === it.cid);
+  if(!d || !d.cli.tel || ehLoja(d.cli.tel)){ it.st = 'pulado'; return proxTodos(0); }   // pagou no meio do caminho / sem número
+  const cb = D.cfg.cobrados[d.cid]; if(cb && Date.now() - new Date(cb) < 6 * 36e5){ it.st = 'pulado'; return proxTodos(0); }   // cobrado há pouco (outra aba, celular, F5): não manda 2x
+  it.st = 'indo'; pintaTodos();
+  const texto = preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd});
+  try{
+    const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel:d.cli.tel, cli:d.cid, texto}}});
+    if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
+    MSG.m[data.id] = {id:data.id, tel:String(d.cli.tel).replace(/\D/g,''), nome:'', cli:d.cid, lado:'enviada', tipo:'text', texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
+    it.fila = data.id; guardaMsg();
+    if(TESTE){ const n = CT.i; setTimeout(() => { const m = MSG.m[data.id]; if(m) m.entrega = n === 2 ? 'failed:trava: essa pessoa nunca te mandou mensagem' : 'feita'; pintaTodos(); }, 1500); }   // teste: o 3º "não vai", pra ver como aparece
+    else despachaZap();
+    const e = etapaDe(d.cid, d); if(e && e.n >= 1) marcaCobrado(d.cid); else marcaEtapa(d.cid, 1);
+  }catch(e){ it.st = 'erro:' + e.message; }
+  proxTodos(CT.passo);
+}
+function proxTodos(ms){
+  if(!CT) return; CT.i++;
+  if(CT.i >= CT.itens.length) return fimTodos();
+  CT.prox = Date.now() + ms; clearTimeout(CT.timer); CT.timer = setTimeout(vaiTodos, ms); pintaTodos();
+}
+function fimTodos(){ if(!CT) return; CT.fim = true; clearTimeout(CT.timer); pintaTodos(); pintaEspeto(); }
+function pararTodos(){ if(!CT) return; clearTimeout(CT.timer); const n = CT.itens.filter(x => x.st === 'falta').length; CT = null; pintaTodos(); pintaEspeto(); if($('#dlg').open && $('#ctp')) $('#dlg').close(); toast('parei' + (n ? ': ' + n + ' ficaram sem cobrança' : '')); }
+function stTodos(it){   // situação de cada um: falta / na fila / enviada ✓ / não foi (motivo)
+  if(it.st === 'pulado') return ['pul', 'pulado'];
+  if(it.st.startsWith('erro:')) return ['err', 'não foi: ' + it.st.slice(5)];
+  if(it.st === 'falta') return ['fal', 'falta'];
+  const m = MSG.m[it.fila], en = m ? m.entrega || '' : 'feita';
+  if(en.startsWith('failed:')) return ['err', 'não foi: ' + en.slice(7)];
+  return en === 'fila' ? ['ind', 'saindo…'] : ['ok', 'enviada ✓'];
+}
+function resumoTodos(){
+  const s = CT.itens.map(stTodos), ok = s.filter(x => x[0] === 'ok').length, err = s.filter(x => x[0] === 'err').length, falta = s.filter(x => x[0] === 'fal').length;
+  return {ok, err, falta, txt: CT.fim ? `Pronto: ${ok} cobrado${ok===1?'':'s'}${err ? ' · ' + err + ' não foi' : ''}` : `Cobrando: ${ok} de ${CT.itens.length}${err ? ' · ' + err + ' não foi' : ''} · faltam ${falta}${CT.prox > Date.now() ? ' · próximo em ' + Math.ceil((CT.prox - Date.now()) / 1000) + ' s' : ''}`};
+}
+function painelTodos(){
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<h3>Cobrar todos</h3><div class="peq" id="ctr"></div><div class="ctlista" id="ctl"></div>
+    <div class="linha"><button class="bt" id="ctf">FECHAR</button><button class="bt" id="ctp">PARAR</button></div>
+    <p class="peq">FECHAR = continua sozinho (a barrinha embaixo mostra). PARAR = ninguém mais recebe.</p>`;
+  $('#ctf').onclick = () => dlg.close();
+  $('#ctp').onclick = () => CT && CT.fim ? (CT = null, pintaTodos(), pintaEspeto(), dlg.close()) : pararTodos();
+  if(!dlg.open) dlg.showModal(); pintaTodos();
+}
+function pintaTodos(){
+  let bar = $('#ctbar');
+  if(!CT){ if(bar) bar.remove(); return; }
+  const r = resumoTodos();
+  if(!bar){ bar = document.createElement('button'); bar.id = 'ctbar'; bar.onclick = painelTodos; document.body.appendChild(bar); }
+  bar.textContent = r.txt + ' ›'; bar.classList.toggle('fim', !!CT.fim);
+  const l = $('#ctl'), t = $('#ctr'); if(!l) return;
+  t.textContent = r.txt;
+  l.innerHTML = CT.itens.map(it => { const [c, s] = stTodos(it); return `<div class="ctit c-${c}"><span>${esc(it.nome)} · ${R(it.total)}</span><span>${esc(s)}</span></div>`; }).join('');
+  const p = $('#ctp'); if(p) p.textContent = CT.fim ? 'OK' : 'PARAR';
+}
+setInterval(() => { if(CT && !CT.fim) pintaTodos(); }, 1000);
 function receber(cid){
   const t = deve(cid), c = cliPor(cid), dlg = $('#dlg');
   dlg.innerHTML = `<h3>${esc(c.nome)} pagou</h3>
