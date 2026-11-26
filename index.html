@@ -372,6 +372,7 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 .zpu{font-size:13px;color:#667781;font-weight:400;flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zfo{display:block;max-width:260px;width:100%;min-height:80px;border-radius:6px;margin:-2px -4px 4px;background:#e9edef;object-fit:cover;cursor:zoom-in}
 .b audio{display:block;width:240px;max-width:100%;height:40px;margin-bottom:2px}
+.zpix{margin:6px 0 2px;border-radius:8px;background:#0000000a;border:1px solid #0000001a;overflow:hidden;min-width:220px}.zpt{display:flex;justify-content:space-between;align-items:center;padding:8px 10px 2px;color:#00a884}.zpt small{color:#667781}.zpk{padding:2px 10px;font-weight:600;color:#111b21;word-break:break-all}.zpn{padding:0 10px 8px;color:#667781;font-size:.9em}.zpix button{display:block;width:100%;border:0;border-top:1px solid #0000001a;background:none;padding:9px;font:inherit;color:#00a884;font-weight:600;cursor:pointer}
 .zdoc{display:flex;align-items:center;gap:8px;background:#0000000d;border-radius:6px;padding:8px 10px;margin-bottom:4px;color:#111b21;text-decoration:none;word-break:break-all}
 .zrr{position:absolute;left:6px;right:60px;bottom:calc(100% + 4px);background:#fff;border-radius:10px;box-shadow:0 4px 18px #0b141a33;max-height:45vh;overflow:auto;z-index:4}
 .zrr button{display:block;width:100%;text-align:left;padding:9px 14px;font-size:14px;color:#111b21;border-bottom:1px solid #f0f2f5}
@@ -963,7 +964,7 @@ function avisaFiado(c, qtd, valor){
   if(!c || !c.tel || ehLoja(c.tel)) return;
   const texto = textoFiado(c, qtd, valor);
   // com o envio pelo PC ligado e conta aberta: vai pra fila do ZAP (sai do número da loja) e abre a conversa no app
-  if(ponteZap() && sb && usuario){ setTimeout(()=>responderZap({k:c.id, cli:c.id, tel:c.tel}, texto), 1000); return; }   // depois do carimbo
+  if(ponteZap() && sb && usuario){ setTimeout(()=>responderZap({k:c.id, cli:c.id, tel:c.tel}, texto, null, pixPronto() ? 'pix' : 'text'), 1000); return; }   // depois do carimbo
   abreLink(c.tel, texto);
 }
 const ehLoja = tel => !!D.cfg.zapLoja && chaveTel(tel) === chaveTel(D.cfg.zapLoja);   // nunca mandar cobrança/aviso pro próprio número
@@ -1944,6 +1945,14 @@ function midiaHtml(m){
   if(m.tipo==='audio') return `<audio controls preload="none" data-mp="${p}"></audio>`;
   return `<a class="zdoc" data-mp="${p}" target="_blank" rel="noopener">📄 <span>${esc(md.nome || 'documento')}</span></a>`;
 }
+// cartão Pix (igual ao /pix do WhatsApp): chave + nome + COPIAR CHAVE PIX (26/11)
+function pixHtml(m){
+  if(m.tipo !== 'pix') return '';
+  const k = pixChave(D.cfg.chavePix); if(!k) return '';
+  const nomes = {PHONE:'Celular', EMAIL:'E-mail', CPF:'CPF', CNPJ:'CNPJ', EVP:'Chave aleatória'};
+  const mostra = k.tipo === 'PHONE' ? telBonito(k.chave.replace(/^\+/, '')) : k.chave;
+  return `<div class="zpix"><div class="zpt"><b>◆ Pix</b><small>${nomes[k.tipo]}</small></div><div class="zpk">${esc(mostra)}</div><div class="zpn">${esc(D.cfg.recebedor || '')}</div><button data-cpix="${esc(k.chave)}">⧉ Copiar chave Pix</button></div>`;
+}
 async function carregaMidia(el){
   const els = [...el.querySelectorAll('[data-mp]')].filter(x => !x.dataset.ok); if(!els.length) return;
   const falta = [...new Set(els.map(x => x.dataset.mp).filter(p => !URLM[p] && !/^(blob|data):/.test(p)))];
@@ -1961,7 +1970,7 @@ function baloes(c){
   for(const m of c.msgs.slice(-200).concat(PEND_ZAP.filter(p=>p.k===c.k))){
     const d = diaZap(m.data); if(d!==dia){ dia = d; ant = null; h += `<div class="zd">${d}</div>`; }
     const eu = m.lado==='enviada', cauda = ant!==m.lado; ant = m.lado;
-    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${esc(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span><span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
+    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${esc(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
   }
   return h;
 }
@@ -1980,7 +1989,8 @@ function telaConversa(k, soRepinta){
     if($('#zet')) $('#zet').onclick = ()=>menuEtq(k);
     $('#zr').onclick = ()=>abrirWhats(c.cli ? cliPor(c.cli) : {nome:c.titulo, tel:c.tel}, RASC[k] || '');
     $('#zm').onclick = e=>{ const b = e.target.closest('button'); if(!b) return;
-      if(b.dataset.v) anotar(b.dataset.v, b.dataset.f);
+      if(b.dataset.cpix){ const k = b.dataset.cpix; (navigator.clipboard ? navigator.clipboard.writeText(k) : Promise.reject()).then(()=>toast('chave Pix copiada'), ()=>toast('chave: ' + k)); }
+      else if(b.dataset.v) anotar(b.dataset.v, b.dataset.f);
       else if(b.dataset.ig) marcar([b.dataset.ig], 'ignorada');
       else if(b.dataset.falha) toast('não chegou: ' + b.dataset.falha); };
   }
@@ -2192,8 +2202,9 @@ async function despachaZap(){
     if(livre && idade > 2 * 36e5){ perdidas.push({fila:m.id, ok:false, id:'', erro:'não saiu do PC (mais de 2 h): mande de novo se ainda quiser'}); continue; }
     const o = {fila:m.id, tel:m.tel, texto:m.tipo==='audio' ? '' : m.texto, tipo:m.tipo || 'text', fiado:avisos.has(m.cli + '|' + m.texto)};
     // aviso de FIADO + botão Pix nativo do WhatsApp (igual ao /pix): 1 mensagem com o texto e "copiar chave" com 1 toque (pedido dele 26/11)
-    const pk = o.fiado && D.cfg.pixBotao !== false ? pixChave(D.cfg.chavePix) : null;
-    if(pk && D.cfg.recebedor && EXTV >= 5){ o.tipo = 'pix'; o.pix = {tipo:pk.tipo, chave:pk.chave, nome:D.cfg.recebedor}; }
+    const pk = (m.tipo === 'pix' || o.fiado) && pixPronto() ? pixChave(D.cfg.chavePix) : null;
+    if(pk && EXTV >= 5){ o.tipo = 'pix'; o.pix = {tipo:pk.tipo, chave:pk.chave, nome:D.cfg.recebedor}; }
+    else if(o.tipo === 'pix') o.tipo = 'text';   // botão desligado ou sem chave: vai só o texto
     if(livre && idade > 8 * 60000 && !(agora - (REENV[m.id] || 0) < 15 * 60000)){ o.deNovo = true; REENV[m.id] = agora; }
     if(m.tipo === 'audio'){   // áudio de cobrança: o app baixa o arquivo e entrega pronto pra extensão (a página do WhatsApp não baixa de fora)
       if(EXTV < 5){ if(!despachaZap.av){ despachaZap.av = 1; toast('atualize a extensão (recarregar) pra enviar áudio'); } continue; }
@@ -2204,6 +2215,7 @@ async function despachaZap(){
   if(perdidas.length) window.postMessage({origem:'zap-ext', tipo:'enviou', lista:perdidas}, location.origin);   // mesmo caminho do resultado da extensão: grava na nuvem
 }
 // tipo da chave Pix pro botão do WhatsApp: e-mail, aleatória (EVP), CNPJ, CPF (confere o dígito) ou celular (+55)
+const pixPronto = () => D.cfg.pixBotao !== false && !!D.cfg.recebedor && !!pixChave(D.cfg.chavePix);
 function pixChave(k){
   k = String(k || '').trim(); if(!k) return null;
   if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(k)) return {tipo:'EMAIL', chave:k.toLowerCase()};
@@ -2233,8 +2245,9 @@ function zapSaude(){
 setInterval(() => { if(EXT && ponteZap() && !TESTE){ naFila.calado = true; praExt({tipo:'enviar', lista:[]}); } }, 20000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
 function janelaZap(c){ if(ponteZap()) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
   const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
-async function responderZap(c, texto, depois){
+async function responderZap(c, texto, depois, tipo){
   texto = (texto||'').trim(); if(!texto) return;
+  tipo = tipo === 'pix' ? 'pix' : 'text';   // pix = texto + cartão "copiar chave Pix" do WhatsApp
   if(ponteZap()){
     const tel = c.tel || ((c.cli && D.clientes.find(x => x.id === c.cli)) || {}).tel;
     if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
@@ -2242,9 +2255,9 @@ async function responderZap(c, texto, depois){
     if(!sb || !usuario) return toast('entre na conta primeiro');
     delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); }
     try{
-      const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel, cli:c.cli, texto}}});
+      const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel, cli:c.cli, texto, tipo}}});
       if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
-      MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo:'text', texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
+      MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo, texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
       guardaMsg(); telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
       if(EXT) despachaZap(); else toast('na fila: sai pelo PC (WhatsApp Web aberto)');
       if(depois) depois();
