@@ -188,7 +188,7 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .nota .ic button:active{background:#2b2b2b14;opacity:1}
 .nota .ic button[data-apaga]{color:var(--verm)}
 .vazio-esp{margin:30px 20px;text-align:center;font-family:"Special Elite";font-size:18px;opacity:.7}
-.pendwa{margin:18px 12px 8px;background:#fff8d6;border-radius:3px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}.pendwa>.bt{width:100%;font-size:13px}.pendl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #c9b98a;font-size:14px}.pendl .bt{padding:6px 10px;font-size:12px;flex:none}.pendl.ag small{opacity:.7;font-size:11px}.agv{display:flex;align-items:center;gap:6px;flex:none}.agv .bt{padding:5px 8px;font-size:11px}.pendwa .miuda{font-size:12px;opacity:.7;margin-top:6px}
+.pendwa{margin:18px 12px 8px;background:#fff8d6;border-radius:3px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}.pendwa>.bt{width:100%;font-size:13px}.pendl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #c9b98a;font-size:14px}.vc{color:inherit;font-weight:700;text-decoration:underline dotted;cursor:pointer}.pendl .bt{padding:6px 10px;font-size:12px;flex:none}.pendl.ag small{opacity:.7;font-size:11px}.agv{display:flex;align-items:center;gap:6px;flex:none}.agv .bt{padding:5px 8px;font-size:11px}.pendwa .miuda{font-size:12px;opacity:.7;margin-top:6px}
 .cttopo{display:block;width:calc(100% - 24px);margin:8px 12px 4px;font-size:14px}.bt.cheio.cttopo{background:var(--verm);border-color:var(--verm);color:#fff}
 .ctmsg{background:#fff8d6;border-radius:6px;padding:8px;margin:4px 0 8px}.ctlista{max-height:38vh;overflow:auto;margin:6px 0}
 .ctit{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #c9b98a;font-size:13px}.ctit span:last-child{flex:none;font-weight:600}
@@ -727,6 +727,11 @@ function pintaEspeto(){
     const cid = n.dataset.nota; if(ponteZap() && sb && usuario) COBRA = {cid, fila:false}; abreCobranca(cid); });
 }
 $('#espbusca').oninput = pintaEspeto;
+// toque no nome/número (lista "pendente sem valor" e CONFERIR) = abre a conversa da pessoa, pra ver o caso dela
+document.addEventListener('click', e => { const a = e.target.closest('[data-vc],[data-vcc]'); if(!a) return; e.preventDefault();
+  const dlg = $('#dlg'); if(dlg.open) dlg.close();
+  if(a.dataset.vcc){ if(ponteZap() && sb && usuario) COBRA = {cid:a.dataset.vcc, fila:false}; return abreCobranca(a.dataset.vcc); }
+  telaConversa(a.dataset.vc); });
 // ===== Etiqueta "pendente" no WhatsApp e o app não sabe o valor → lista no Espeto; ELE diz quanto (o app nunca inventa valor) =====
 let pendAberto = false;
 const diaLocal = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
@@ -749,9 +754,9 @@ function confere(){
   const lista = (a, f) => a.length ? a.map(f).join('<br>') : '<i>nenhum</i>';
   dlg.innerHTML = `<h3>Espeto × WhatsApp</h3>
     <div class="peq"><b>${bate.length}</b> batem (devem e têm a etiqueta <b>${esc(etq.nome)}</b>) · Espeto: ${dv.length} · com a etiqueta no WhatsApp: ${cv.filter(c => c.etqs.some(ehCobrar)).length}</div>
-    <label>DEVEM E NÃO TÊM A ETIQUETA · ${semEt.length}</label><div class="peq">${lista(semEt, x => esc(x.d.cli.nome) + ' · ' + R(x.d.total))}</div>
-    <label>TÊM A ETIQUETA E NÃO DEVEM NADA AQUI · ${soEt.length}</label><div class="peq">${lista(soEt, c => esc(c.titulo))}</div>
-    <label>DEVEM MAS NÃO ACHEI A CONVERSA NO WHATSAPP · ${semConv.length}</label><div class="peq">${lista(semConv, d => esc(d.cli.nome) + (d.cli.tel ? '' : ' (sem telefone)')) }</div>
+    <label>DEVEM E NÃO TÊM A ETIQUETA · ${semEt.length}</label><div class="peq">${lista(semEt, x => `<a href="#" class="vc" data-vc="${esc(x.c.k)}">${esc(x.d.cli.nome)}</a> · ${R(x.d.total)}`)}</div>
+    <label>TÊM A ETIQUETA E NÃO DEVEM NADA AQUI · ${soEt.length}</label><div class="peq">${lista(soEt, c => `<a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a>`)}</div>
+    <label>DEVEM MAS NÃO ACHEI A CONVERSA NO WHATSAPP · ${semConv.length}</label><div class="peq">${lista(semConv, d => `<a href="#" class="vc" data-vcc="${esc(d.cid)}">${esc(d.cli.nome)}</a>` + (d.cli.tel ? '' : ' (sem telefone)')) }</div>
     <div class="linha"><button class="bt" id="cfx">FECHAR</button>${semEt.length ? '<button class="bt cheio" id="cfs">PÔR A ETIQUETA NOS ' + semEt.length + '</button>' : ''}</div>
     <p class="peq">Só olhei, nada foi mudado. O botão (se aparecer) só põe a etiqueta, não manda mensagem; a etiqueta sozinha tira quando quitar.</p>`;
   $('#cfx').onclick = () => dlg.close();
@@ -762,7 +767,7 @@ function pintaPend(){
   const conf = usuario && Object.keys(ZC.conv || {}).length ? '<div class="pendwa"><button class="bt" id="confere">CONFERIR COM AS ETIQUETAS DO WHATSAPP</button></div>' : '';
   const ps = pendSemValor(); if(!ps.length) return conf;
   return `<div class="pendwa"><button class="bt" id="pendAbre">${pendAberto ? '▾' : '▸'} NO WHATSAPP COM PENDENTE, SEM VALOR AQUI · ${ps.length}</button>
-    ${pendAberto ? ps.map(c => { const d = c.z && c.z.ult_data; return `<div class="l pendl"><span><b>${esc(c.titulo)}</b>${d ? ' · última msg há ' + dias(d) + 'd' : ''}${(() => { const pm = prometeu('t' + chaveTel(c.tel)); return pm ? ' · <b>promete ' + dataBR(pm.ate) + '</b>' : ''; })()}</span><button class="bt" data-pend="${esc(c.tel)}">QUANTO?</button></div>`; }).join('')
+    ${pendAberto ? ps.map(c => { const d = c.z && c.z.ult_data; return `<div class="l pendl"><span><a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a>${d ? ' · última msg há ' + dias(d) + 'd' : ''}${(() => { const pm = prometeu('t' + chaveTel(c.tel)); return pm ? ' · <b>promete ' + dataBR(pm.ate) + '</b>' : ''; })()}</span><button class="bt" data-pend="${esc(c.tel)}">QUANTO?</button></div>`; }).join('')
       + '<div class="miuda">Toque em QUANTO? e diga o valor: aí entra no Espeto pra cobrar. NÃO DEVE tira da lista.</div>' : ''}</div>` + conf;
 }
 function anotaPend(tel){
