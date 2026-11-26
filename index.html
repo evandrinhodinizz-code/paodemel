@@ -1220,6 +1220,7 @@ function telaSecao(k){
     dados: `<label style="margin-top:0">CHAVE PIX</label><input id="s1" value="${esc(c.chavePix)}" placeholder="celular, e-mail ou chave aleatória">
       <label>NOME DA CHAVE PIX</label><input id="s2" value="${esc(c.recebedor)}" placeholder="como aparece pra quem paga">
       <label>NOSSO WHATSAPP (DA LOJA)</label><input id="s3" type="tel" inputmode="tel" value="${c.zapLoja?esc(telBonito(c.zapLoja)):''}" placeholder="41 99999-9999">
+      <div class="lel" style="border:0"><input type="checkbox" id="s20" ${c.pixBotao !== false ? 'checked' : ''}><label for="s20">No aviso do fiado, mandar o <b>Pix com botão de copiar</b> (igual ao /pix do WhatsApp)</label></div>
       <div class="peq" style="margin-top:6px">A chave e o nome vão nas mensagens no lugar de {pix}. O número da loja nunca recebe cobrança.</div>`,
     cobranca: `${caixa('s4','Na hora do fiado', c.msgFiado)}${caixa('s5','1ª cobrança', c.msgCobrar)}${[2,3].map(n=>`<div class="msgc grav" id="g${n}"><div class="gl"><b>${n}ª cobrança · seu áudio</b><span class="prev"></span></div><div class="gbts"><button class="bt" data-gr="${n}"></button><button class="bt" data-ou="${n}">▶ OUVIR</button></div></div>`).join('')}
       <div class="peq" style="margin-top:6px">1ª = texto. 2ª e 3ª = áudio seu, vai como mensagem de voz pelo WhatsApp da loja. Depois da 3ª, o Espeto mostra LIGAR.</div>`,
@@ -1248,7 +1249,7 @@ function telaSecao(k){
   else $('#ssalva').onclick=()=>{
     const c = D.cfg;   // a config de AGORA: a nuvem troca o D.cfg enquanto ele digita, e gravar na cópia de quando abriu = não salvava (26/11)
     if(k==='dados'){ const t=telLimpo($('#s3').value); if($('#s3').value.trim() && !/^55\d{10,11}$/.test(t)) return toast('WhatsApp estranho: use DDD + número');
-      Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t}); }
+      Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t, pixBotao:$('#s20').checked}); }
     if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value});
     if(k==='oferta') Object.assign(c,{produtoNovo:$('#s10').value, msgOferta:$('#s11').value});
     salvar(); tudo(); toast('salvo'); telaMenu();
@@ -2190,6 +2191,9 @@ async function despachaZap(){
     const idade = agora - new Date(m.data);
     if(livre && idade > 2 * 36e5){ perdidas.push({fila:m.id, ok:false, id:'', erro:'não saiu do PC (mais de 2 h): mande de novo se ainda quiser'}); continue; }
     const o = {fila:m.id, tel:m.tel, texto:m.tipo==='audio' ? '' : m.texto, tipo:m.tipo || 'text', fiado:avisos.has(m.cli + '|' + m.texto)};
+    // aviso de FIADO + botão Pix nativo do WhatsApp (igual ao /pix): 1 mensagem com o texto e "copiar chave" com 1 toque (pedido dele 26/11)
+    const pk = o.fiado && D.cfg.pixBotao !== false ? pixChave(D.cfg.chavePix) : null;
+    if(pk && D.cfg.recebedor && EXTV >= 5){ o.tipo = 'pix'; o.pix = {tipo:pk.tipo, chave:pk.chave, nome:D.cfg.recebedor}; }
     if(livre && idade > 8 * 60000 && !(agora - (REENV[m.id] || 0) < 15 * 60000)){ o.deNovo = true; REENV[m.id] = agora; }
     if(m.tipo === 'audio'){   // áudio de cobrança: o app baixa o arquivo e entrega pronto pra extensão (a página do WhatsApp não baixa de fora)
       if(EXTV < 5){ if(!despachaZap.av){ despachaZap.av = 1; toast('atualize a extensão (recarregar) pra enviar áudio'); } continue; }
@@ -2198,6 +2202,19 @@ async function despachaZap(){
   }
   if(lista.length) praExt({tipo:'enviar', lista});
   if(perdidas.length) window.postMessage({origem:'zap-ext', tipo:'enviou', lista:perdidas}, location.origin);   // mesmo caminho do resultado da extensão: grava na nuvem
+}
+// tipo da chave Pix pro botão do WhatsApp: e-mail, aleatória (EVP), CNPJ, CPF (confere o dígito) ou celular (+55)
+function pixChave(k){
+  k = String(k || '').trim(); if(!k) return null;
+  if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(k)) return {tipo:'EMAIL', chave:k.toLowerCase()};
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)) return {tipo:'EVP', chave:k.toLowerCase()};
+  const d = k.replace(/\D/g, '');
+  if(d.length === 14 && !/^\+/.test(k)) return {tipo:'CNPJ', chave:d};
+  const cpf = s => { if(/^(\d)\1{10}$/.test(s)) return false; const dv = n => { let t = 0; for(let i = 0; i < n; i++) t += +s[i] * (n + 1 - i); return (t * 10) % 11 % 10; }; return dv(9) === +s[9] && dv(10) === +s[10]; };
+  if(d.length === 11 && !/^\+/.test(k) && cpf(d)) return {tipo:'CPF', chave:d};
+  const t = d.replace(/^55(?=\d{10,11}$)/, '');
+  if(t.length === 10 || t.length === 11) return {tipo:'PHONE', chave:'+55' + t};
+  return null;   // não reconheceu: vai só o texto (como antes)
 }
 const REENV = {};   // fila → quando foi mandada de novo (no máx. 1 vez a cada 15 min)
 setInterval(despachaZap, 10000);
