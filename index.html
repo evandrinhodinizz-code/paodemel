@@ -177,6 +177,19 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .acoes button,.bt{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:1.2px;padding:9px 0;border:1px solid #2b2b2b;border-radius:2px;text-align:center}
 .acoes .zap,.bt.cheio{background:#2b2b2b;color:var(--papel)}
 .espfil{padding:0 0 6px}
+.elista{margin:0 12px 14px;background:var(--papel);box-shadow:var(--sombra);border-radius:2px;overflow:hidden}
+.elin{display:grid;grid-template-columns:minmax(0,1fr) 52px 30px 62px 26px 26px;align-items:center;gap:6px;padding:0 8px 0 12px;font:12px var(--mono)}
+.eth{padding:9px 8px 7px 12px;font:600 9px var(--mono);opacity:.55;border-bottom:2px solid var(--tinta)}.eth span:nth-child(2),.eth span:nth-child(3){text-align:center}.eth span:nth-child(4){text-align:right}
+.eit{border-bottom:1px dashed #2b2b2b33}.eit:last-child{border-bottom:0}.eit .el{min-height:46px;cursor:pointer}
+.enm{font:600 13px Archivo,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.enm small{display:block;font:400 10px var(--mono);text-transform:none;opacity:.6;margin-top:1px}
+.ech{justify-self:center;font:700 11px var(--mono);padding:4px 0;width:44px;text-align:center;border-radius:11px;background:#2b2b2b14;color:#6b6660}
+.ech.c1{background:#d89a2b33;color:#7a4f00}.ech.c2{background:#d89a2b;color:#2b1a00}.ech.c3,.ech.lig{background:#a8261b;color:#fff}.ech.lig{font-size:9.5px}
+.eds{text-align:center;font-weight:600}.eds.ve{color:var(--verm)}.eds.risc{color:var(--verm);font-weight:700}
+.evl{text-align:right;font:600 13px var(--mono);color:var(--verm)}
+.eic{color:#2b2b2b99;display:flex;align-items:center;justify-content:center;height:36px}.eic svg{width:17px;height:17px}.eic:active{color:var(--verm)}
+.eext{display:none;padding:2px 12px 12px}.eit.on .eext{display:block}.eit.on{background:#fff8d6}
+.eext .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.eext .acoes>*{flex:1;min-width:84px;text-align:center}.etsinc{margin:0 20px 8px;font:600 10.5px var(--mono);letter-spacing:.4px}.etsinc.certo{color:var(--verde)}.etsinc.ruim{color:var(--verm)}.etsinc.dif{color:#7a4f00}.edesde{display:block;margin-top:8px;font:10.5px var(--mono);opacity:.65}
 .espab{display:flex;gap:6px;overflow-x:auto;padding:0 20px 10px;scrollbar-width:none}
 .espab::-webkit-scrollbar{display:none}
 .espab button{flex:none;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 10px;border:1px solid #24171055;background:#fffcf6aa;border-radius:2px}
@@ -692,6 +705,7 @@ function pintaAgend(){   // aba AGENDADO (pedido dele 26/11): quem prometeu paga
   $$('#agend [data-agtira]').forEach(b => b.onclick = () => { const cid = b.dataset.agtira, pr = {...(D.cfg.promessas || {})}, ant = pr[cid]; delete pr[cid]; D.cfg.promessas = pr; salvar(); tudo();
     toast('agendamento cancelado: volta pro COBRAR TODOS', () => { D.cfg.promessas = {...D.cfg.promessas, [cid]:ant}; salvar(); tudo(); }); });
 }
+const ABERTAS_ESP = new Set();   // linhas abertas continuam abertas quando o app se atualiza sozinho (10 s)
 function pintaEspeto(){
   const todos = devedores(), total = todos.reduce((s,d)=>s+d.total,0), dn = D.cfg.diasNovo||7, dr = D.cfg.diasRisco||30;
   const cont = {todos:todos.length, recentes:0, antigos:0, risco:0}; todos.forEach(d=>cont[faixaD(d)]++);
@@ -706,12 +720,10 @@ function pintaEspeto(){
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
    + (() => { const ft = filaTodos(); return CT ? `<button class="bt cheio cttopo" id="cobTodos">${esc(resumoTodos().txt)} ›</button>` : ft.length ? `<button class="bt cheio cttopo" id="cobTodos">COBRAR TODOS · ${ft.length} · ${R(ft.reduce((s,d)=>s+d.total,0))}</button>` : ''; })()
-   + (ds.length ? `<div class="espeto"><div class="haste"></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d); return `
-    <div class="nota" data-nota="${d.cid}"><div class="ic"><button data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div><div class="nm">${esc(d.cli.nome.toUpperCase())}</div>
-      <div class="l"><span>${d.qtd} un · há ${n} dia${n===1?'':'s'}</span><span class="velha">${n>=30?'RISCO DE CALOTE':n>7?'COBRAR JÁ':''}</span></div>
-      <div class="l"><span>desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''}</span><span class="vl">${R(d.total)}</span></div>
-      <div class="etapa e${et?et.n:0}">${[1,2,3].map(k=>`<i class="${et&&et.n>=k?'on':''}"></i>`).join('')}<span>${et ? ROT_ET[et.n] + ' · ' + (dias(et.d) ? 'há ' + dias(et.d) + 'd' : 'hoje') + (et.n>=3 ? ' · agora: LIGAR' : '') : 'sem cobrança ainda'}</span></div>
-      ${(() => { const pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid]; return (pm ? '<div class="prom">PROMETEU PAGAR ' + dataBR(pm.ate) + ' · só cobra depois</div>' : '') + (pa && D.cfg.pixAuto ? '<div class="prom">PIX ABERTO ' + R(pa.valor) + ' · enviado ' + dataBR(pa.em) + ' · baixa sozinha quando pagar</div>' : ''); })()}<div class="acoes">${et && et.n>=3 && d.cli.tel ? `<a class="bt-ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}<button class="zap" data-cobrar="${d.cid}">${et ? (et.n>=3 ? 'COBRAR' : 'COBRAR ' + (et.n+1) + 'ª') : 'COBRAR'}</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
+   + pintaSinc() + (ds.length ? `<div class="elista"><div class="elin eth"><span>NOME</span><span>COBRANÇA</span><span>DIAS</span><span>VALOR</span><span></span><span></span></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d), lig = et && et.n>=3, pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid];
+      const [ct, cc] = lig ? ['LIGAR','lig'] : et ? [et.n + 'ª', 'c' + et.n] : ['—', ''];
+      return `<div class="eit${ABERTAS_ESP.has(d.cid) ? ' on' : ''}" data-nota="${d.cid}"><div class="elin el"><div class="enm">${esc(d.cli.nome)}<small>${esc(d.cli.tel ? telBonito(d.cli.tel) : 'sem WhatsApp')}${pm ? ' · promete ' + dataBR(pm.ate) : ''}</small></div><span class="ech ${cc}">${ct}</span><span class="eds${n>30?' risc':n>7?' ve':''}">${n}d</span><span class="evl">${v2(d.total)}</span><button class="eic" data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button class="eic" data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div>
+      <div class="eext">${pm ? '<div class="prom">PROMETEU PAGAR ' + dataBR(pm.ate) + ' · só cobra depois</div>' : ''}${pa && D.cfg.pixAuto ? '<div class="prom">PIX ABERTO ' + R(pa.valor) + ' · enviado ' + dataBR(pa.em) + ' · baixa sozinha quando pagar</div>' : ''}<div class="acoes">${lig && d.cli.tel ? `<a class="bt-ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}<button class="zap" data-cobrar="${d.cid}">${et ? (et.n>=3 ? 'COBRAR' : 'COBRAR ' + (et.n+1) + 'ª') : 'COBRAR'}</button><button data-receber="${d.cid}">RECEBI</button><button data-conv="${d.cid}">CONVERSA</button></div><small class="edesde">desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''} · ${d.qtd} un</small></div></div>`; }).join('')}</div>`
    : `<div class="vazio-esp">${todos.length ? 'Ninguém neste filtro.' : 'Espeto vazio.<br>Ninguém devendo.'}</div>`)
    + pintaPend();
   $$('#espeto [data-edita]').forEach(b=>b.onclick=()=>notasDo(b.dataset.edita));
@@ -723,8 +735,9 @@ function pintaEspeto(){
   const cf0 = $('#confere'); if(cf0) cf0.onclick = confere;
   const pa = $('#pendAbre'); if(pa) pa.onclick = () => { pendAberto = !pendAberto; pintaEspeto(); };
   $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
-  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(e.target.closest('button,a')) return;   // tocar na nota = conversa dele (pedido dele 26/11); corrigir venda = lápis
-    const cid = n.dataset.nota; if(ponteZap() && sb && usuario) COBRA = {cid, fila:false}; abreCobranca(cid); });
+  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(e.target.closest('button,a')) return;   // tocar na linha = abre os botões (COBRAR / RECEBI / CONVERSA); lápis e lixeira ficam na linha
+    const cid = n.dataset.nota; n.classList.toggle('on'); if(n.classList.contains('on')) ABERTAS_ESP.add(cid); else ABERTAS_ESP.delete(cid); });
+  $$('#espeto [data-conv]').forEach(b=>b.onclick=()=>{ const cid = b.dataset.conv; if(ponteZap() && sb && usuario) COBRA = {cid, fila:false}; abreCobranca(cid); });
 }
 $('#espbusca').oninput = pintaEspeto;
 // toque no nome/número (lista "pendente sem valor" e CONFERIR) = abre a conversa da pessoa, pra ver o caso dela
@@ -750,16 +763,20 @@ function confere(){
   const semEt = [], semConv = [], bate = [];
   dv.forEach(d => { const c = porCli[d.cid] || cv.find(x => x.tel && d.cli.tel && chaveTel(x.tel) === chaveTel(d.cli.tel));
     if(!c || !c.z) semConv.push(d); else if(c.etqs.some(ehCobrar)) bate.push(d); else semEt.push({d, c}); });
-  const soEt = pendSemValor(), prom = soEt.filter(c => prometeu('t' + chaveTel(c.tel)));
+  const soEt = pendSemValor(), ign0 = D.cfg.pendIgn || {}, ign = cv.filter(c => c.etqs.some(ehCobrar) && c.tel && ign0[chaveTel(c.tel)] && !(c.cli && deve(c.cli) > 0.004));
+  const comEt = cv.filter(c => c.etqs.some(ehCobrar)), semTel = comEt.filter(c => !c.tel);
   const lista = (a, f) => a.length ? a.map(f).join('<br>') : '<i>nenhum</i>';
   dlg.innerHTML = `<h3>Espeto × WhatsApp</h3>
-    <div class="peq"><b>${bate.length}</b> batem (devem e têm a etiqueta <b>${esc(etq.nome)}</b>) · Espeto: ${dv.length} · com a etiqueta no WhatsApp: ${cv.filter(c => c.etqs.some(ehCobrar)).length}</div>
+    <div class="peq"><b>${bate.length}</b> batem (devem e têm a etiqueta <b>${esc(etq.nome)}</b>) · Espeto: ${dv.length} · com a etiqueta no WhatsApp: <b>${comEt.length}</b> (${comEt.filter(c => c.arq).length} arquivadas) · conversas que o app enxerga: ${Object.keys(ZC.conv).length}</div>
+    <div class="peq">Conta: ${comEt.length} com etiqueta = ${bate.length} no Espeto + ${soEt.length} na lista "sem valor" + ${ign.length} que você marcou NÃO DEVE${semTel.length ? ' + ' + semTel.length + ' sem número' : ''}${comEt.length - bate.length - soEt.length - ign.length - semTel.length ? ' + ' + (comEt.length - bate.length - soEt.length - ign.length - semTel.length) + ' outros' : ''}.</div>
     <label>DEVEM E NÃO TÊM A ETIQUETA · ${semEt.length}</label><div class="peq">${lista(semEt, x => `<a href="#" class="vc" data-vc="${esc(x.c.k)}">${esc(x.d.cli.nome)}</a> · ${R(x.d.total)}`)}</div>
     <label>TÊM A ETIQUETA E NÃO DEVEM NADA AQUI · ${soEt.length}</label><div class="peq">${lista(soEt, c => `<a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a>`)}</div>
+    ${ign.length ? `<label>MARCADAS "NÃO DEVE" (SOMEM DA LISTA) · ${ign.length}</label><div class="peq">${ign.map(c => `<a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a> <button class="bt" data-volta="${esc(chaveTel(c.tel))}" style="padding:3px 8px;font-size:11px">VOLTAR PRA LISTA</button>`).join('<br>')}</div>` : ''}
     <label>DEVEM MAS NÃO ACHEI A CONVERSA NO WHATSAPP · ${semConv.length}</label><div class="peq">${lista(semConv, d => `<a href="#" class="vc" data-vcc="${esc(d.cid)}">${esc(d.cli.nome)}</a>` + (d.cli.tel ? '' : ' (sem telefone)')) }</div>
     <div class="linha"><button class="bt" id="cfx">FECHAR</button>${semEt.length ? '<button class="bt cheio" id="cfs">PÔR A ETIQUETA NOS ' + semEt.length + '</button>' : ''}</div>
     <p class="peq">Só olhei, nada foi mudado. O botão (se aparecer) só põe a etiqueta, não manda mensagem; a etiqueta sozinha tira quando quitar.</p>`;
   $('#cfx').onclick = () => dlg.close();
+  $$('#dlg [data-volta]').forEach(b => b.onclick = () => { const n = {...D.cfg.pendIgn}; delete n[b.dataset.volta]; D.cfg.pendIgn = n; salvar(); pintaEspeto(); confere(); });
   const b = $('#cfs'); if(b) b.onclick = () => { if(!b._arm){ b._arm = 1; b.textContent = 'TOQUE DE NOVO'; return; } dlg.close(); semEt.forEach(x => etiquetar({tel:x.c.tel, z:x.c.z}, etq.id, true, x.d.cli.nome)); toast('pondo a etiqueta em ' + semEt.length); };
   dlg.showModal();
 }
@@ -1666,6 +1683,43 @@ function pixBaixa(){
   D.cfg.pixFeito = pf; D.cfg.leZap = zap; salvar();
   toast('Pix recebido: ' + msgs.join(' | '));
 }
+// ===== ETIQUETAS SEMPRE CERTAS (pedido dele 26/11): a cada 10 s (junto da sincronização) o app compara o que DEVERIA estar no WhatsApp com o que está e corrige.
+// Regras: deve (sem promessa) → Pagamento pendente · promessa vigente → Pendente + Agendado pagamento · só mexe em quem o app conhece (tem dívida ou promessa dele).
+// Tenta de novo no máx. a cada 5 min por pessoa (se o WhatsApp recusar, não fica em laço). Só roda no PC (extensão) e com a etiqueta automática ligada.
+function esperado(){   // {tel:{pend,agend,cid,nome}} — o que o app sabe que devia ter
+  const r = {};
+  devedores().forEach(d => { if(!d.cli.tel || ehLoja(d.cli.tel)) return; const pm = prometeu(d.cid, d);
+    r[chaveTel(d.cli.tel)] = {pend:true, agend:!!pm, cid:d.cid, nome:d.cli.nome}; });
+  return r;
+}
+function divergencias(){   // lista do que está diferente do WhatsApp agora
+  const pen = Object.values(ZC.etq).find(e => /pagamento pendente/i.test(e.nome || '')), ag = acompEtq(), meta = {};
+  Object.values(ZC.conv).forEach(z => meta[chaveTel(z.tel)] = z);
+  const ex = esperado(), dif = [];
+  for(const k in ex){ const z = meta[k]; if(!z){ dif.push({k, ...ex[k], falta:'conversa'}); continue; }
+    const tem = id => !!id && (z.etiquetas || []).includes(id);
+    if(pen && ex[k].pend && !tem(pen.id)) dif.push({k, ...ex[k], z, falta:'pend'});
+    if(ag && ex[k].agend && !tem(ag.id)) dif.push({k, ...ex[k], z, falta:'agend'});
+    if(ag && !ex[k].agend && tem(ag.id) && (D.cfg.acompApp || {})[z.tel]) dif.push({k, ...ex[k], z, falta:'tiraAg'}); }
+  return dif;
+}
+function converge(){
+  if(!(EXT || TESTE) || !usuario || D.cfg.etqAuto !== true) return;
+  const t = D.cfg.convTent = D.cfg.convTent || {}, agora = Date.now(), zap = {...(D.cfg.leZap || {})}; let n = 0;
+  divergencias().forEach(x => { if(!x.z || x.falta === 'conversa') return; if(t[x.k + x.falta] && agora - t[x.k + x.falta] < 300000) return;
+    t[x.k + x.falta] = agora; const z = zap[x.z.tel] = {...(zap[x.z.tel] || {})};
+    if(x.falta === 'pend') z.pend = 1; else if(x.falta === 'agend'){ z.acomp = 1; D.cfg.acompApp = {...(D.cfg.acompApp || {}), [x.z.tel]:x.cid}; } else z.tiraAc = 1; n++; });
+  if(n){ D.cfg.leZap = zap; salvar(); }
+}
+function pintaSinc(){   // faixa no Espeto: o que o usuário precisa saber pra confiar nas etiquetas
+  if(!usuario) return '';
+  const dif = divergencias().filter(x => x.falta !== 'conversa'), sem = divergencias().filter(x => x.falta === 'conversa').length;
+  const vivo = (EXT || TESTE) && (TESTE || (SAUDE && !SAUDE.sem && Date.now() - SAUDE.em < 60000));
+  if(!(EXT || TESTE)) return '<div class="etsinc">Etiquetas do WhatsApp: só o PC com o WhatsApp Web aberto confere e corrige.</div>';
+  if(!vivo) return '<div class="etsinc ruim">⚠ WhatsApp Web do PC sem resposta: as etiquetas podem estar desatualizadas (abra/atualize a aba dele).</div>';
+  if(dif.length) return '<div class="etsinc dif">↻ ' + dif.length + ' etiqueta' + (dif.length === 1 ? '' : 's') + ' diferente' + (dif.length === 1 ? '' : 's') + ' do WhatsApp: corrigindo sozinho (confere a cada 10 s)</div>';
+  return '<div class="etsinc certo">✓ Etiquetas conferidas com o WhatsApp' + (sem ? ' · ' + sem + ' sem conversa lá' : '') + ' · a cada 10 s</div>';
+}
 const ehAcomp = e => /^(agendado pagamento|acompanhar)$/i.test(((e && e.nome) || '').trim());   // a dele é "Agendado pagamento"; "Acompanhar" só se for a única
 const acompEtq = () => { const l = Object.values(ZC.etq).filter(ehAcomp); return l.find(e => /^agendado/i.test(e.nome.trim())) || l[0]; };
 function acompVolta(){   // chegou o dia prometido (ou ele pagou): o app tira a etiqueta Acompanhar que ele mesmo pôs e o cliente volta pro COBRAR TODOS
@@ -1682,6 +1736,8 @@ function leZapRoda(){
   const okE = Object.values(ZC.etq).find(ehOk), pen = Object.values(ZC.etq).filter(ehCobrar), so = a => tels.filter(t => zap[t][a]), gs = [];
   if(okE && so('ok').length) gs.push({acao:'etiqueta', tels:so('ok'), extra:{etiqueta:okE.id, por:true}});
   pen.forEach(e => { const ts = so('tira').filter(t => (ZC.conv[t].etiquetas || []).includes(e.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:e.id, por:false}}); });
+  const penE = Object.values(ZC.etq).find(e => /pagamento pendente/i.test(e.nome || ''));
+  if(penE && so('pend').length) gs.push({acao:'etiqueta', tels:so('pend'), extra:{etiqueta:penE.id, por:true}});
   const ac = acompEtq();
   if(ac && so('acomp').length) gs.push({acao:'etiqueta', tels:so('acomp'), extra:{etiqueta:ac.id, por:true}});
   if(ac){ const ts = so('tiraAc').filter(t => (ZC.conv[t].etiquetas || []).includes(ac.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:ac.id, por:false}}); }
@@ -2639,7 +2695,7 @@ async function iniciarNuvem(){
 // ===== Começo =====
 $('#qr').innerHTML=[1,1,1,0,1,0,1,1,1,1,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,1,0,1,0,1,0,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1].map(v=>`<i class="${v?'':'v'}"></i>`).join('');
 $('#data').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','').toUpperCase();
-function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaAgend(); pintaMes(); etqAuto(); okAuto(); leAuto(); acompVolta(); pixBaixa(); leZapRoda(); }
+function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaAgend(); pintaMes(); etqAuto(); okAuto(); leAuto(); acompVolta(); pixBaixa(); converge(); leZapRoda(); }
 // Modo teste: 12 clientes + ~200 mensagens de exemplo; ENVIAR finge que mandou (3 em 3 falha, pra ver o "!").
 function carregaTeste(){
   const nomes = ['Ana Souza','Bruno Lima','Carla Mendes','Diego Rocha','Elaine Costa','Fábio Nunes','Gabi Torres','Hugo Prado','Íris Melo','João Pedro','Kátia Reis','Lucas Dias'];
