@@ -668,7 +668,8 @@ function pintaEspeto(){
   $$('#espeto [data-pend]').forEach(b=>b.onclick=()=>anotaPend(b.dataset.pend));
   const pa = $('#pendAbre'); if(pa) pa.onclick = () => { pendAberto = !pendAberto; pintaEspeto(); };
   $$('#espeto [data-receber]').forEach(b=>b.onclick=()=>receber(b.dataset.receber));
-  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(!e.target.closest('button,a')) notasDo(n.dataset.nota); });
+  $$('#espeto [data-nota]').forEach(n=>n.onclick=e=>{ if(e.target.closest('button,a')) return;   // tocar na nota = conversa dele (pedido dele 26/11); corrigir venda = lápis
+    const cid = n.dataset.nota; if(ponteZap() && sb && usuario) COBRA = {cid, fila:false}; abreCobranca(cid); });
 }
 $('#espbusca').oninput = pintaEspeto;
 // ===== Etiqueta "pendente" no WhatsApp e o app não sabe o valor → lista no Espeto; ELE diz quanto (o app nunca inventa valor) =====
@@ -1147,6 +1148,7 @@ function telaSecao(k){
         if(confirm(`Trocar os dados deste aparelho pelo backup? (${n.clientes.length} clientes, ${n.vendas.length} vendas)`)){ n.cfg=Object.assign({},PADRAO.cfg,n.cfg); n.pagamentos||=[]; D=n; sel=null; salvar(); tudo(); telaSecao('backup'); toast('restaurado'); }
       }).catch(()=>toast('arquivo não é um backup válido')); }; }
   else $('#ssalva').onclick=()=>{
+    const c = D.cfg;   // a config de AGORA: a nuvem troca o D.cfg enquanto ele digita, e gravar na cópia de quando abriu = não salvava (26/11)
     if(k==='dados'){ const t=telLimpo($('#s3').value); if($('#s3').value.trim() && !/^55\d{10,11}$/.test(t)) return toast('WhatsApp estranho: use DDD + número');
       Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t}); }
     if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value});
