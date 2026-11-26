@@ -1948,6 +1948,12 @@ function midiaHtml(m){
   return `<a class="zdoc" data-mp="${p}" target="_blank" rel="noopener">📄 <span>${esc(md.nome || 'documento')}</span></a>`;
 }
 // cartão Pix (igual ao /pix do WhatsApp): chave + nome + COPIAR CHAVE PIX (26/11)
+// formatação do WhatsApp no balão: *negrito*, _itálico_, ~riscado~ (o texto é escapado antes; 26/11)
+function fmtZap(s){
+  return esc(s).replace(/(^|[\s(])\*([^*\n]+?)\*(?=$|[\s.,!?:;)])/g, '$1<b>$2</b>')
+    .replace(/(^|[\s(])_([^_\n]+?)_(?=$|[\s.,!?:;)])/g, '$1<i>$2</i>')
+    .replace(/(^|[\s(])~([^~\n]+?)~(?=$|[\s.,!?:;)])/g, '$1<s>$2</s>');
+}
 function pixHtml(m){
   if(m.tipo !== 'pix') return '';
   const k = pixChave(D.cfg.chavePix); if(!k) return '';
@@ -1972,7 +1978,7 @@ function baloes(c){
   for(const m of c.msgs.slice(-200).concat(PEND_ZAP.filter(p=>p.k===c.k))){
     const d = diaZap(m.data); if(d!==dia){ dia = d; ant = null; h += `<div class="zd">${d}</div>`; }
     const eu = m.lado==='enviada', cauda = ant!==m.lado; ant = m.lado;
-    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${m.tipo === 'pix' && pixHtml(m) ? '' : esc(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
+    h += `<div class="b ${eu?'eu':'ele'}${cauda?' cd':''}">${midiaHtml(m)}<span class="tx">${m.tipo === 'pix' && pixHtml(m) ? '' : fmtZap(m.midia ? (m.texto||'').replace(/^\[(foto|áudio|arquivo)\]\s*/,'') : m.texto||'')}</span>${pixHtml(m)}<span class="esp"></span><span class="mt">${horaZap(m.data)}${tique(m)}</span></div>` + (eu ? '' : sugZap(m));
   }
   return h;
 }
