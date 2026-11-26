@@ -366,7 +366,7 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 .zcl{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .zcl b{color:#111b21}
 .zcl .zcx{font-size:14px;color:#8696a0;padding:2px 6px;flex:none;border:0;display:inline;min-width:0}
-.zcbs{display:flex;gap:6px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
+.zcbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
 .zcb{flex:1 0 auto;font-family:inherit;letter-spacing:0;font-size:11.5px;font-weight:600;padding:8px 10px;border-radius:16px;background:#f0f2f5;color:#54656f;border:1px solid transparent;white-space:nowrap;text-decoration:none;text-align:center;transition:background .2s,color .2s,transform .12s}
 .zcb:active{transform:scale(.96)}
 .zcb.ok{color:#1fa855}
@@ -1090,24 +1090,35 @@ function cobrar(cid, fila){
 function abreCobranca(cid){   // conversa do cliente no ZAP (cria uma vazia se ainda não tem mensagem)
   const c = conversas().find(x=>x.cli===cid); telaConversa(c ? c.k : cid);
 }
+// Botão ◆ ENVIAR PIX da barra de cobrança (pedido dele 26/11): manda só o Pix, em qualquer etapa. Pix automático ligado = código com o valor da dívida;
+// senão o cartão "copiar chave Pix" (igual ao /pix do WhatsApp); sem nome do recebedor = a chave em texto. Não conta como cobrança (não muda a etapa).
+async function enviaPixCobranca(c, d){
+  const cod = await pixDaDivida(d.cid, d.total);
+  if(cod){ await responderZap(c, PIX_AVISO); return responderZap(c, cod); }
+  if(!D.cfg.chavePix){ toast('coloque a chave Pix no Menu ☰ primeiro'); return telaSecao('dados'); }
+  const t = 'Pra pagar os R$ ' + v2(d.total) + ' do pão de mel, essa é a chave Pix' + (D.cfg.recebedor ? ' (' + D.cfg.recebedor + ')' : '') + ':';
+  if(pixPronto()) return responderZap(c, t, null, 'pix');
+  await responderZap(c, t); return responderZap(c, D.cfg.chavePix);
+}
 function barraCobra(c){   // barra em cima do campo de mensagem: em que cobrança está + 1ª / 2ª / 3ª (+ LIGAR)
   const el = $('#zcob'); if(!el) return;
   if(!COBRA || COBRA.cid !== c.cli){ el.innerHTML = ''; el.hidden = true; return; }
   const d = devedores().find(x=>x.cid===COBRA.cid);
   if(!d){ el.hidden = false; el.innerHTML = `<div class="zcl"><span><b>Pago</b> · nada em aberto</span><button class="zcx" data-cx>✕</button></div>`; return; }
   const e = etapaDe(d.cid, d), n = e ? e.n : 0, au = D.cfg.audios||{};
-  const bt = k => { const feito = n >= k, prox = n + 1 === k, arm = el._arm === k, falta = k > 1 && !(au[k] && au[k].path);
-    return `<button class="zcb${feito?' ok':''}${prox?' prox':''}${arm?' arm':''}" data-cb="${k}">${arm ? 'TOQUE DE NOVO PRA ENVIAR' : (feito?'✓ ':'') + (k===1?'1ª MENSAGEM':k+'ª ÁUDIO') + (falta?' · gravar':'')}</button>`; };
+  const bt = k => { const feito = n >= k, prox = n + 1 === k, arm = el._arm === k, falta = k > 1 && k < 9 && !(au[k] && au[k].path);
+    return `<button class="zcb${k===9?'':feito?' ok':''}${k===9?'':prox?' prox':''}${arm?' arm':''}" data-cb="${k}">${arm ? 'TOQUE DE NOVO PRA ENVIAR' : k===9 ? '◆ ENVIAR PIX' : (feito?'✓ ':'') + (k===1?'1ª MENSAGEM':k+'ª ÁUDIO') + (falta?' · gravar':'')}</button>`; };
   el.hidden = false;
   el.innerHTML = `<div class="zcl"><span>Deve <b>${R(d.total)}</b> · há ${dias(d.maisAntiga)}d · ${n ? 'feita a ' + ROT_ET[n] + (e.d ? ' ' + (dias(e.d) ? 'há ' + dias(e.d) + 'd' : 'hoje') : '') : 'nenhuma cobrança ainda'}</span><button class="zcx" data-cx aria-label="fechar">✕</button></div>
-    <div class="zcbs">${bt(1)}${bt(2)}${bt(3)}${n>=3 ? `<a class="zcb ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}${COBRA.fila ? '<button class="zcb" data-prox>PRÓXIMO ›</button>' : ''}</div>`;
+    <div class="zcbs">${bt(1)}${bt(2)}${bt(3)}${bt(9)}${n>=3 ? `<a class="zcb ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}${COBRA.fila ? '<button class="zcb" data-prox>PRÓXIMO ›</button>' : ''}</div>`;
   el.onclick = ev => { const b = ev.target.closest('[data-cb],[data-cx],[data-prox]'); if(!b) return;
     if(b.dataset.cx !== undefined){ COBRA = null; return barraCobra(c); }
     if(b.dataset.prox !== undefined){ COBRA = null; return cobrarFila(); }
     const k = +b.dataset.cb;
-    if(k > 1 && !(au[k] && au[k].path)){ toast('grave a ' + k + 'ª cobrança primeiro'); return telaSecao('cobranca'); }
+    if(k > 1 && k < 9 && !(au[k] && au[k].path)){ toast('grave a ' + k + 'ª cobrança primeiro'); return telaSecao('cobranca'); }
     if(el._arm !== k){ el._arm = k; clearTimeout(el._t); el._t = setTimeout(()=>{ el._arm = 0; barraCobra(c); }, 4000); return barraCobra(c); }   // 2 toques: nada sai sem querer
     el._arm = 0; clearTimeout(el._t);
+    if(k === 9) return enviaPixCobranca(c, d);
     if(k === 1) (async () => { const cod = await pixDaDivida(d.cid, d.total), md = cod ? msgSemPix(D.cfg.msgCobrar) : D.cfg.msgCobrar;
       await responderZap(c, preencher(md, d.cli, {valor:v2(d.total), qtd:d.qtd}), ()=>marcaEtapa(d.cid, 1)); if(cod){ await responderZap(c, PIX_AVISO); await responderZap(c, cod); } })();
     else enviarAudioZap(c, k, ()=>marcaEtapa(d.cid, k));
