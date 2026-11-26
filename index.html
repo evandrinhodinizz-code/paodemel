@@ -189,7 +189,7 @@ hr{border:0;border-top:1px dashed #b5b0a8;margin:10px 0}
 .nota .ic button[data-apaga]{color:var(--verm)}
 .vazio-esp{margin:30px 20px;text-align:center;font-family:"Special Elite";font-size:18px;opacity:.7}
 .pendwa{margin:18px 12px 8px;background:#fff8d6;border-radius:3px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}.pendwa>.bt{width:100%;font-size:13px}.pendl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #c9b98a;font-size:14px}.pendl .bt{padding:6px 10px;font-size:12px;flex:none}.pendwa .miuda{font-size:12px;opacity:.7;margin-top:6px}
-.cttopo{display:block;width:calc(100% - 24px);margin:8px 12px 4px;font-size:14px}
+.cttopo{display:block;width:calc(100% - 24px);margin:8px 12px 4px;font-size:14px}.bt.cheio.cttopo{background:var(--verm);border-color:var(--verm);color:#fff}
 .ctmsg{background:#fff8d6;border-radius:6px;padding:8px;margin:4px 0 8px}.ctlista{max-height:38vh;overflow:auto;margin:6px 0}
 .ctit{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #c9b98a;font-size:13px}.ctit span:last-child{flex:none;font-weight:600}
 .ctit.c-ok span:last-child{color:#2e7d32}.ctit.c-err{flex-wrap:wrap}.ctit.c-err span:last-child{color:#b3261e;flex:1 1 100%;font-weight:400;font-size:12px}.ctit.c-ind span:last-child{color:#a06a00}.ctit.c-fal,.ctit.c-pul{opacity:.6}
@@ -286,6 +286,14 @@ dialog.folha.zap[open]{display:flex;flex-direction:column}
 .zec span{overflow:hidden;text-overflow:ellipsis}.zec .ze{box-shadow:0 0 0 1.5px #fff}
 .zec svg{width:16px;height:16px;fill:currentColor;flex:none}
 .zarq .av{background:none;color:#008069}.zarq .av svg{width:22px;height:22px;fill:currentColor}.zarq time{color:#008069!important}
+.zav{position:relative;flex:none;display:flex}
+.zck{position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:#25d366;border:2px solid #fff;display:grid;place-items:center}
+.zck svg{width:14px;height:14px;fill:#fff}
+.zc.sl{background:#e7f8ee}
+.zfav{flex:none;font-style:normal;color:#8696a0;font-size:14px}
+.zetm.zsm{right:6px;min-width:250px}.zsep{border:0;border-top:1px solid #e9edef;margin:4px 0}
+.zls .av{background:none;color:#8696a0;font-size:22px}.zeg{width:22px;height:22px}.zlsd{margin:0;padding:10px 16px;font-size:13.5px;background:#f7f8fa;color:#54656f;border-bottom:1px solid #e9edef}.zetm .zx{color:#8696a0}.zetm .zx small{font-size:12px}
+.bt.perigo{background:var(--verm)!important;border-color:var(--verm)!important;color:#fff!important}
 .zpin{flex:none;display:inline-flex;color:#8696a0}.zpin svg{width:17px;height:17px;fill:currentColor;transform:rotate(45deg)}
 .zn.zp{min-width:12px;width:12px;height:12px;padding:0}
 .zdv{flex:none;font-style:normal;font-size:11px;font-weight:600;color:#b42318;background:#fde8e7;border-radius:9px;padding:1px 7px}
@@ -549,6 +557,8 @@ const irPara = i => { if(innerWidth<1000) pags.scrollTo({left:i*pags.clientWidth
 let sel = null, q = 1, preco = D.cfg.preco, ocupado = false;
 function pintaAvisos(){
   let h = '';
+  let zs = ''; try{ zs = zapSaude(); }catch(e){}   // no começo do app as variáveis do ZAP ainda não existem
+  if(zs) h += `<div class="bilhete"><b>WhatsApp do PC:</b> ${esc(zs)}</div>`;
   if(!D.cfg.chavePix) h += `<div class="bilhete">Falta sua chave Pix pro botão COBRAR. <a href="#" data-sec="dados">Pôr agora</a></div>`;
   const u = D.cfg.ultimoBackup;
   if(!usuario && D.vendas.length && (!u || dias(u) >= 7)) h += `<div class="bilhete">Faz ${u? dias(u)+' dias':'tempo'} sem backup. Se o Chrome for limpo, as vendas somem. <a href="#" data-sec="backup">Fazer backup</a></div>`;
@@ -850,8 +860,12 @@ function novoCliente(vendeDepois, editar){
 }
 
 // ===== Cobrar / receber / oferecer =====
+const letras = s => /[a-zà-ÿ]/i.test(s || '');
+// cliente salvo só com o número ("(41) 9999-…") = sem nome: "Oi!", nunca "Oi (41)!". (Nome do perfil do WhatsApp não: vem coisa tipo "DIOS".)
+const nomeMsg = c => { const n = (c.nome || '').trim(); return letras(n) ? n.split(' ')[0] : ''; };
 function preencher(txt, c, extra){
-  return txt.replace(/\{nome\}/g, c.nome.split(' ')[0]).replace(/\{valor\}/g, extra.valor||'').replace(/\{qtd\}/g, extra.qtd||'')
+  const n = nomeMsg(c); txt = n ? txt.replace(/\{nome\}/g, n) : txt.replace(/[ \t]*,?[ \t]*\{nome\}/g, '');
+  return txt.replace(/\{valor\}/g, extra.valor||'').replace(/\{qtd\}/g, extra.qtd||'')
     .replace(/\{pix\}/g, D.cfg.chavePix + (D.cfg.recebedor?` (${D.cfg.recebedor})`:'')).replace(/\{produto\}/g, D.cfg.produtoNovo||'');
 }
 // PC: abre o app do WhatsApp instalado (whatsapp://) ou, se escolhido no ⚙, o WhatsApp Web (sempre na MESMA aba). Celular: wa.me.
@@ -977,7 +991,9 @@ function cobrarFila(){
 // Mais de 20 = 1 a cada 3 min (a extensão segura 20/h e 80/dia). Fechar ou recarregar o app = para; tocar de novo continua de onde parou
 // (quem já foi cobrado hoje sai da fila). A extensão ainda recusa quem nunca te mandou mensagem (trava do motor.js).
 let CT = null;   // {itens:[{cid, nome, total, fila, st}], i, prox, timer, passo}
-const filaTodos = () => filaCobrar().filter(d => !ehLoja(d.cli.tel));
+// TODOS que devem no Espeto (pedido dele 26/11: não só os de 7+ dias), com WhatsApp, menos quem foi cobrado nos últimos "intervalo" dias
+const proxEtapa = d => { const e = etapaDe(d.cid, d); return (e ? e.n : 0) + 1; };   // 1 = 1ª msg, 2/3 = áudio, 4 = já fez as 3 (LIGAR)
+const filaTodos = () => devedores().filter(d => d.cli.tel && !ehLoja(d.cli.tel) && !(D.cfg.cobrados[d.cid] && dias(D.cfg.cobrados[d.cid]) < D.cfg.intervalo));
 const passoTodos = n => TESTE ? 4000 : (n > 20 ? 180000 : 60000);
 const minTxt = ms => { const m = Math.ceil(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60 ? m % 60 + ' min' : ''); };
 function cobrarTodos(){
@@ -990,12 +1006,14 @@ function cobrarTodos(){
   dlg.innerHTML = `<h3>Cobrar todos · ${fila.length} cliente${fila.length===1?'':'s'}</h3>
     <div class="peq">1 mensagem a cada <b>${passo >= 180000 ? '3 minutos' : 'minuto'}</b> · leva uns <b>${minTxt((fila.length - 1) * passo + 1)}</b> · total ${R(fila.reduce((s,d)=>s+d.total,0))}.${fila.length > 20 ? ' Mais de 20: vai devagar (máx. 20 por hora) pra o WhatsApp não bloquear.' : ''} Deixe o app e o WhatsApp Web abertos.</div>
     <label>A 1ª VAI ASSIM (${esc(d0.cli.nome)})</label><div class="peq ctmsg">${esc(preencher(D.cfg.msgCobrar, d0.cli, {valor:v2(d0.total), qtd:d0.qtd}))}</div>
-    <div class="peq ctlista">${fila.map(d=>`${esc(d.cli.nome)} · ${R(d.total)} · ${dias(d.maisAntiga)}d`).join('<br>')}</div>
+    <div class="peq">${[1,2,3].map(k => { const n = fila.filter(d=>proxEtapa(d)===k).length, falta = k > 1 && n && !((D.cfg.audios||{})[k]||{}).path; return n ? `<b>${n}</b> na ${k}ª ${k===1?'(texto)':'(seu áudio)'}${falta?' <b style="color:var(--verm)">· áudio não gravado: esses ficam de fora</b>':''}` : ''; }).filter(Boolean).join(' · ')}${fila.some(d=>proxEtapa(d)>3) ? ' · ' + fila.filter(d=>proxEtapa(d)>3).length + ' já fez as 3 (LIGAR, não recebe)' : ''}</div>
+    <div class="peq ctlista">${fila.map(d=>{ const k = proxEtapa(d); return `${esc(d.cli.nome)} · ${R(d.total)} · ${dias(d.maisAntiga)}d · <b>${k>3?'LIGAR':k===1?'1ª msg':k+'ª áudio'}</b>`; }).join('<br>')}</div>
+    ${(() => { const sv = pendSemValor().length, jc = devedores().length - fila.length; return (sv ? `<div class="peq"><b>+${sv} com pendente no WhatsApp sem valor no app</b>: ficam de fora até você dizer QUANTO? no Espeto (o app não inventa valor).</div>` : '') + (jc > 0 ? `<div class="peq">${jc} cobrado${jc===1?'':'s'} nos últimos ${D.cfg.intervalo} dias ou sem WhatsApp: ficam de fora.</div>` : ''); })()}
     <div class="linha"><button class="bt" id="ctx">VOLTAR</button><button class="bt cheio" id="cts">COMEÇAR</button></div>
     <p class="peq">Cada um recebe a mensagem com o nome e o valor dele. Quem nunca te mandou mensagem é pulado (trava contra bloqueio).</p>`;
   $('#ctx').onclick = () => dlg.close();
   $('#cts').onclick = () => { const b = $('#cts'); if(!b._arm){ b._arm = 1; b.textContent = 'TOQUE DE NOVO PRA COMEÇAR'; setTimeout(()=>{ if(b.isConnected){ b._arm = 0; b.textContent = 'COMEÇAR'; } }, 4000); return; }
-    CT = {itens: fila.map(d => ({cid:d.cid, nome:d.cli.nome, total:d.total, fila:'', st:'falta'})), i:0, prox:0, timer:null, passo};
+    CT = {itens: fila.map(d => ({cid:d.cid, nome:d.cli.nome, total:d.total, fila:'', st:'falta', k:proxEtapa(d)})), i:0, prox:0, timer:null, passo};
     vaiTodos(); painelTodos(); };
   dlg.showModal();
 }
@@ -1005,17 +1023,25 @@ async function vaiTodos(){
   const d = devedores().find(x => x.cid === it.cid);
   if(!d || !d.cli.tel || ehLoja(d.cli.tel)){ it.st = 'pulado'; return proxTodos(0); }   // pagou no meio do caminho / sem número
   const cb = D.cfg.cobrados[d.cid]; if(cb && Date.now() - new Date(cb) < 6 * 36e5){ it.st = 'pulado'; return proxTodos(0); }   // cobrado há pouco (outra aba, celular, F5): não manda 2x
+  // ETAPA de cada um (pedido dele 26/11): nenhuma ainda = 1ª (texto) · fez a 1ª = 2ª (áudio) · fez a 2ª = 3ª (áudio) · fez a 3ª = LIGAR (não manda)
+  const e = etapaDe(d.cid, d), k = (e ? e.n : 0) + 1; it.k = k;
+  if(k > 3){ it.st = 'ligar'; return proxTodos(0); }
+  const au = (D.cfg.audios || {})[k];
+  if(k > 1 && !(au && au.path)){ it.st = 'semaudio'; return proxTodos(0); }
   it.st = 'indo'; pintaTodos();
-  const texto = preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd});
+  const tel = String(d.cli.tel).replace(/\D/g,'');
+  const texto = k === 1 ? preencher(D.cfg.msgCobrar, d.cli, {valor:v2(d.total), qtd:d.qtd}) : '[áudio]';
+  const midia = k === 1 ? null : {path:au.path, mime:'audio/ogg', seg:au.seg || 0};
   try{
-    const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel:d.cli.tel, cli:d.cid, texto}}});
+    const fila = k === 1 ? {tel, cli:d.cid, texto} : {tel, cli:d.cid, texto, tipo:'audio', midia};
+    const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila}});
     if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
-    MSG.m[data.id] = {id:data.id, tel:String(d.cli.tel).replace(/\D/g,''), nome:'', cli:d.cid, lado:'enviada', tipo:'text', texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
+    MSG.m[data.id] = {id:data.id, tel, nome:'', cli:d.cid, lado:'enviada', tipo:k === 1 ? 'text' : 'audio', midia, texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
     it.fila = data.id; guardaMsg();
     if(TESTE){ const n = CT.i; setTimeout(() => { const m = MSG.m[data.id]; if(m) m.entrega = n === 2 ? 'failed:trava: essa pessoa nunca te mandou mensagem' : 'feita'; pintaTodos(); }, 1500); }   // teste: o 3º "não vai", pra ver como aparece
     else despachaZap();
-    const e = etapaDe(d.cid, d); if(e && e.n >= 1) marcaCobrado(d.cid); else marcaEtapa(d.cid, 1);
-  }catch(e){ it.st = 'erro:' + e.message; }
+    marcaEtapa(d.cid, k);
+  }catch(err){ it.st = 'erro:' + err.message; }
   proxTodos(CT.passo);
 }
 function proxTodos(ms){
@@ -1027,11 +1053,13 @@ function fimTodos(){ if(!CT) return; CT.fim = true; clearTimeout(CT.timer); pint
 function pararTodos(){ if(!CT) return; clearTimeout(CT.timer); const n = CT.itens.filter(x => x.st === 'falta').length; CT = null; pintaTodos(); pintaEspeto(); if($('#dlg').open && $('#ctp')) $('#dlg').close(); toast('parei' + (n ? ': ' + n + ' ficaram sem cobrança' : '')); }
 function stTodos(it){   // situação de cada um: falta / na fila / enviada ✓ / não foi (motivo)
   if(it.st === 'pulado') return ['pul', 'pulado'];
+  if(it.st === 'ligar') return ['pul', 'já fez as 3: LIGAR'];
+  if(it.st === 'semaudio') return ['err', 'não foi: grave o áudio da ' + it.k + 'ª (Menu ☰ > Mensagens de cobrança)'];
   if(it.st.startsWith('erro:')) return ['err', 'não foi: ' + it.st.slice(5)];
-  if(it.st === 'falta') return ['fal', 'falta'];
-  const m = MSG.m[it.fila], en = m ? m.entrega || '' : 'feita';
+  if(it.st === 'falta') return ['fal', 'falta · vai a ' + it.k + 'ª'];
+  const m = MSG.m[it.fila], en = m ? m.entrega || '' : 'feita', q = it.k === 1 ? '1ª msg' : it.k + 'ª áudio';
   if(en.startsWith('failed:')) return ['err', 'não foi: ' + en.slice(7)];
-  return en === 'fila' ? ['ind', 'saindo…'] : ['ok', 'enviada ✓'];
+  return en === 'fila' ? ['ind', q + ' saindo…'] : ['ok', q + ' ✓'];
 }
 function resumoTodos(){
   const s = CT.itens.map(stTodos), ok = s.filter(x => x[0] === 'ok').length, err = s.filter(x => x[0] === 'err').length, falta = s.filter(x => x[0] === 'fal').length;
@@ -1325,9 +1353,12 @@ function okConfirma(cid){
     D.pagamentos = D.pagamentos.filter(p => p.id !== pg.id); okFim(cid, null); salvar(); tudo(); });
 }
 function conversas(){
-  const g = {};
+  const g = {}, apg = D.cfg.zapApagou || {};   // apagou/limpou pelo app: mensagens até essa hora somem (a cópia na nuvem fica)
+  const porTel = {}; D.clientes.forEach(cl => { if(cl.tel) porTel[chaveTel(cl.tel)] = cl.id; });   // mensagem do WhatsApp sem cliente = liga pelo número (senão COBRAR abria conversa vazia, 26/11)
   Object.values(MSG.m).forEach(m => { if(m.entrega==='feita') return;   // da fila, já enviada (a cópia real "web_" aparece no lugar)
-    const k = m.cli || m.tel; const c = (g[k] ||= {k, cli:m.cli, tel:m.tel, nome:'', msgs:[]}); c.msgs.push(m); if(m.nome) c.nome = m.nome; });
+    const a = apg[chaveTel(m.tel)]; if(a && m.data <= a.t) return;
+    const ci = m.cli || porTel[chaveTel(m.tel)] || null, k = ci || m.tel; const c = (g[k] ||= {k, cli:ci, tel:m.tel, nome:'', msgs:[]});
+    if(!c.tel && m.tel) c.tel = m.tel; c.msgs.push(m); if(m.nome) c.nome = m.nome; });
   const meta = {}; Object.values(ZC.conv).forEach(z => meta[chaveTel(z.tel)] = z);
   const usados = new Set(), lista = Object.values(g);
   lista.forEach(c => {
@@ -1337,13 +1368,14 @@ function conversas(){
     if(z && !usados.has(z.tel)){ usados.add(z.tel); c.z = z; }
   });
   Object.values(ZC.conv).forEach(z => { if(usados.has(z.tel)) return;   // conversa só no WhatsApp (mais de 30 dias sem mensagem no app)
+    const a = apg[chaveTel(z.tel)]; if(a && a.sai && !(z.ult_data > a.t)) return;   // apagada: volta só se chegar mensagem nova
     const cl = D.clientes.find(x => x.tel && chaveTel(x.tel)===chaveTel(z.tel));
     lista.push({k:'z' + z.tel, cli:cl ? cl.id : null, tel:z.tel, nome:'', msgs:[], novas:0, sug:false, z}); });
   if(COBRA && !lista.some(c => c.cli===COBRA.cid)){ const cl = cliPor(COBRA.cid);   // COBRAR de quem ainda não tem conversa: abre uma vazia
     if(cl && cl.tel) lista.push({k:COBRA.cid, cli:cl.id, tel:String(cl.tel).replace(/\D/g,''), nome:'', msgs:[], novas:0, sug:false, ult:{data:'', texto:'', lado:'recebida'}}); }
   lista.forEach(c => {
     const z = c.z, cl = c.cli && D.clientes.find(x=>x.id===c.cli);
-    if(z && z.ult_data && z.ult_texto && (!c.ult || z.ult_data > c.ult.data)) c.ult = {data:z.ult_data, texto:z.ult_texto, lado:z.ult_eu?'enviada':'recebida', entrega:z.ult_eu ? ACK_ENT[z.ult_ack] || null : null};
+    const lp = z && apg[chaveTel(z.tel)]; if(z && z.ult_data && z.ult_texto && !(lp && z.ult_data <= lp.t) && (!c.ult || z.ult_data > c.ult.data)) c.ult = {data:z.ult_data, texto:z.ult_texto, lado:z.ult_eu?'enviada':'recebida', entrega:z.ult_eu ? ACK_ENT[z.ult_ack] || null : null};
     c.ult ||= {data:(z && z.ult_data) || '', texto:'', lado:'recebida'};
     c.quando = z && z.ult_data > c.ult.data ? z.ult_data : c.ult.data;
     // nome igual ao do WhatsApp; cliente que ELE nomeou no app vence (o criado sozinho pelo ZAP, com o nome do perfil, segue o WhatsApp)
@@ -1359,7 +1391,7 @@ function conversas(){
 function pintaZap(){
   const n = conversas().filter(c=>!c.arq && c.temNova).length;
   ['#zapN','#zapN2'].forEach(s=>{ const b = $(s); b.textContent = n; b.classList.toggle('oculto', !n); });
-  if($('#folha').open && zapTela) zapTela==='lista' ? telaZap() : telaConversa(zapTela, true);
+  if($('#folha').open && zapTela) zapTela==='lista' ? telaZap() : zapTela==='listas' ? telaListas() : telaConversa(zapTela, true);
 }
 // ===== Aba ZAP com cara de WhatsApp (lista + conversa) =====
 const ZI = {
@@ -1371,6 +1403,11 @@ const ZI = {
   arq:'<svg viewBox="0 0 24 24"><path d="M20.5 5.2 19.1 3.5c-.3-.3-.7-.5-1.1-.5H6c-.4 0-.8.2-1.1.5L3.5 5.2C3.2 5.6 3 6 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.2-.9-.5-1.3zM12 17.5 6.5 12H10v-2h4v2h3.5zM5.1 5l.8-1h12l.9 1z"/></svg>',
   pin:'<svg viewBox="0 0 24 24"><path d="M16 3v2h1v6l2 3v2h-6v5l-1 1-1-1v-5H5v-2l2-3V5h1V3z"/></svg>',
   etq:'<svg viewBox="0 0 24 24"><path d="M17.6 5.8A2 2 0 0 0 16 5H5a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h11c.7 0 1.2-.3 1.6-.8L22 12z"/></svg>',
+  lixo:'<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>',
+  mais:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  ok:'<svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>',
+  despin:'<svg viewBox="0 0 24 24"><path d="M16 3v2h1v6l2 3v2h-6v5l-1 1-1-1v-5H5v-2l2-3V5h1V3z"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2"/></svg>',
+  desarq:'<svg viewBox="0 0 24 24"><path d="M20.5 5.2 19.1 3.5c-.3-.3-.7-.5-1.1-.5H6c-.4 0-.8.2-1.1.5L3.5 5.2C3.2 5.6 3 6 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.5-.2-.9-.5-1.3zM12 9.5l5.5 5.5H14v2h-4v-2H6.5zM5.1 5l.8-1h12l.9 1z"/></svg>',
   sai:'<svg viewBox="0 0 24 24"><path d="M14 3v2h3.6l-9.8 9.8 1.4 1.4L19 6.4V10h2V3zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2z"/></svg>'
 };
 function tique(m, naLista){
@@ -1396,15 +1433,134 @@ function corEtq(hex){ const m = String(hex||'').match(/^#?([0-9a-f]{6})$/i); if(
   return {bg:`hsl(${h} ${sat}% 90%)`, c:`hsl(${h} ${Math.min(80, sat)}% 28%)`}; }
 const caixinha = e => { const k = corEtq(e.cor); return `<span class="zbd" style="background:${k.bg};color:${k.c}">${esc(e.nome)}</span>`; };
 const bolinha = e => `<i class="ze" style="background:${esc(e.cor || '#8696a0')}" title="${esc(e.nome)}"></i>`;
+// ===== Seleção de conversas (segurar uma conversa, igual ao WhatsApp do celular): fixar, apagar, arquivar, ⋮ =====
+// Muda o WhatsApp de verdade (só no PC, pela extensão 2.7+). Favoritas ficam no app (o wa-js 4.8.2 não tem favoritos).
+let zapSel = null, zapVis = [];
+const PED_LOTE = {};
+const ehFav = c => !!(D.cfg.zapFav || {})[chaveTel(c.tel)];
+function selZap(k){ zapSel ||= new Set(); zapSel.has(k) ? zapSel.delete(k) : zapSel.add(k); if(!zapSel.size) zapSel = null; telaZap(); }
+function barraSel(sel){
+  const tudoFix = sel.every(c=>c.fix), tudoArq = sel.every(c=>c.arq);
+  return `<div class="zb"><button class="zi" id="zsx" aria-label="sair da seleção">${ZI.volta}</button><b class="zt">${sel.length}</b>
+    <button class="zi" data-za="${tudoFix?'desafixar':'fixar'}" aria-label="${tudoFix?'desafixar':'fixar'}">${tudoFix?ZI.despin:ZI.pin}</button>
+    <button class="zi" data-za="apagar" aria-label="apagar">${ZI.lixo}</button>
+    <button class="zi" data-za="${tudoArq?'desarquivar':'arquivar'}" aria-label="${tudoArq?'desarquivar':'arquivar'}">${tudoArq?ZI.desarq:ZI.arq}</button>
+    <button class="zi" id="zsm" aria-label="mais">${ZI.mais}</button></div>`;
+}
+function ligaSel(f, sel){
+  $('#zsx').onclick = ()=>{ zapSel = null; telaZap(); };
+  f.querySelectorAll('[data-za]').forEach(b=>b.onclick=()=>zapAcao(b.dataset.za));
+  $('#zsm').onclick = ()=>menuSel(sel);
+}
+function menuSel(sel, sub){
+  const v = $('#zetm'); if(v){ v.remove(); if(!sub) return; }
+  const m = document.createElement('div'); m.className = 'zetm zsm'; m.id = 'zetm';
+  const nl = sel.some(c=>c.temNova), fav = sel.every(ehFav), it = (a, t, x) => `<button data-m="${a}"${x?' class="zx"':''}><span>${t}</span>${x?`<small>${x}</small>`:''}</button>`;
+  if(sub==='etq') m.innerHTML = Object.values(ZC.etq).sort((a,b)=>a.nome.localeCompare(b.nome)).map(e => { const tem = sel.every(c=>c.etqs.some(x=>x.id===e.id));
+    return `<button data-e="${esc(e.id)}" data-p="${tem?0:1}">${bolinha(e)}<span>${esc(e.nome)}</span>${tem?'<b>✓</b>':''}</button>`; }).join('');
+  else if(sub==='mudo') m.innerHTML = it('mudo:8h','Silenciar por 8 horas') + it('mudo:semana','Silenciar por 1 semana') + it('mudo:sempre','Silenciar sempre') + it('desilenciar','Tirar o silêncio');
+  else m.innerHTML = it(nl?'lida':'naolida', nl?'Marcar como lida':'Marcar como não lida') + it('tudo','Selecionar tudo') + it('mudo','Silenciar…')
+    + it('etq','Etiquetar…') + it('fav', fav?'Tirar dos favoritos':'Adicionar aos favoritos') + it('trancar','Trancar conversas','só no celular') + it('limpar','Limpar conversas');
+  m.onclick = e => { const b = e.target.closest('button'); if(!b) return; m.remove();
+    if(b.dataset.e) return zapAcao('etiqueta', {etiqueta:b.dataset.e, por:b.dataset.p==='1'});
+    const a = b.dataset.m;
+    if(a==='tudo'){ zapSel = new Set(zapVis); return telaZap(); }
+    if(a==='etq' || a==='mudo') return menuSel(sel, a);
+    if(a==='trancar') return toast('trancar: só no WhatsApp do celular (o WhatsApp Web não deixa)');
+    if(a.startsWith('mudo:')) return zapAcao('silenciar', {tempo:a.slice(5)});
+    zapAcao(a); };
+  $('#folha').appendChild(m);
+}
+const NOME_ACAO = {fixar:'fixada', desafixar:'desafixada', arquivar:'arquivada', desarquivar:'desarquivada', lida:'marcada como lida', naolida:'marcada como não lida',
+  silenciar:'silenciada', desilenciar:'sem silêncio', etiqueta:'etiquetada', apagar:'apagada', limpar:'limpa'};
+function zapAcao(acao, extra = {}){
+  const sel = conversas().filter(c=>zapSel && zapSel.has(c.k)); if(!sel.length) return;
+  if(acao==='fav'){   // só no app
+    const tira = sel.every(ehFav), fv = {...(D.cfg.zapFav || {})};
+    sel.forEach(c => { const t = chaveTel(c.tel); if(tira) delete fv[t]; else fv[t] = 1; });
+    D.cfg.zapFav = fv; salvar(); zapSel = null; telaZap();
+    return toast(sel.length + (sel.length > 1 ? ' conversas ' : ' conversa ') + (tira ? 'fora dos favoritos' : 'nos favoritos'));
+  }
+  if(!TESTE && !EXT) return toast('isso muda o WhatsApp: só no PC com o WhatsApp Web aberto');
+  if(!TESTE && EXTV < 6) return toast('extensão antiga: ⚙ → atualizar extensão');
+  const noZap = sel.filter(c=>c.z); if(!noZap.length) return toast('essas conversas não estão no WhatsApp Web');
+  if((acao==='apagar' || acao==='limpar') && extra.certeza !== true) return confirmaLote(acao, noZap);
+  if(acao==='fixar' && noZap.filter(c=>!c.fix).length + conversas().filter(c=>c.fix && !c.arq && !noZap.includes(c)).length > 3) return toast('o WhatsApp só deixa 3 conversas fixadas');
+  const pedido = 'l' + (++nEtq), tels = noZap.map(c=>c.z.tel); PED_LOTE[pedido] = {acao, extra, fora:sel.length - noZap.length};
+  zapSel = null; telaZap(); toast('mudando no WhatsApp…');
+  if(TESTE) return setTimeout(()=>agiu({pedido, acao, lista:tels.map(tel=>({tel, ok:true}))}), 700);
+  praExt({tipo:'lote', acao, tels, pedido, etiqueta:extra.etiqueta, por:extra.por, tempo:extra.tempo, certeza:extra.certeza === true});
+}
+function confirmaLote(acao, cs){   // ação que NÃO volta: 2 toques
+  const dlg = $('#dlg'), ap = acao==='apagar', n = cs.length, s = n > 1 ? 's' : '', V = ap ? 'APAGAR' : 'LIMPAR';
+  dlg.innerHTML = `<h3>${ap?'Apagar':'Limpar'} ${n} conversa${s}?</h3>
+    <div class="peq">${cs.slice(0, 8).map(c=>'<b>' + esc(c.titulo) + '</b>').join(', ')}${n > 8 ? ' e mais ' + (n - 8) : ''}</div>
+    <p class="peq">${ap ? 'A conversa some do WhatsApp (no celular também) e do app.' : 'As mensagens somem do WhatsApp (no celular também) e do app; a conversa e as mensagens com estrela ficam.'}
+    Vendas e fiado anotados no app não mudam. <b>Não dá pra desfazer.</b></p>
+    <div class="linha"><button class="bt" id="lcn">CANCELAR</button><button class="bt cheio" id="lcs">${V}</button></div>`;
+  let toques = 0; $('#lcn').onclick = ()=>dlg.close();
+  $('#lcs').onclick = e=>{ if(++toques === 1){ e.target.textContent = 'TOQUE DE NOVO PRA ' + V; e.target.classList.add('perigo'); return; }
+    dlg.close(); zapAcao(acao, {certeza:true}); };
+  dlg.showModal();
+}
+function agiu(r){   // resposta da extensão: o que mudou no WhatsApp
+  const p = PED_LOTE[r.pedido]; if(!p) return; delete PED_LOTE[r.pedido];
+  const lista = r.lista || [], ok = lista.filter(x=>x.ok), ruim = lista.filter(x=>!x.ok), a = r.acao, agora = new Date().toISOString();
+  ok.forEach(x => { const z = ZC.conv[x.tel]; if(!z) return;
+    if(a==='fixar') z.fixada = Math.floor(Date.now()/1000); else if(a==='desafixar') z.fixada = 0;
+    else if(a==='arquivar') z.arquivada = true; else if(a==='desarquivar') z.arquivada = false;
+    else if(a==='lida') z.nao_lidas = 0; else if(a==='naolida') z.nao_lidas = -1;
+    else if(a==='etiqueta'){ const st = new Set(z.etiquetas || []); p.extra.por ? st.add(String(p.extra.etiqueta)) : st.delete(String(p.extra.etiqueta)); z.etiquetas = [...st]; }
+    else if(a==='apagar' || a==='limpar') D.cfg.zapApagou = {...(D.cfg.zapApagou || {}), [chaveTel(x.tel)]: {t:agora, sai:a==='apagar'}};
+  });
+  if(a==='apagar' || a==='limpar') salvar();
+  guardaZC();
+  const nOk = ok.length, w = NOME_ACAO[a].split(' '); if(nOk > 1 && /a$/.test(w[0])) w[0] += 's';
+  const txt = nOk ? nOk + (nOk > 1 ? ' conversas ' : ' conversa ') + w.join(' ') : '';
+  toast([txt, ruim.length ? ruim.length + ' não ' + (ruim.length > 1 ? 'mudaram' : 'mudou') + ': ' + (ruim[0].erro || 'erro') : '', p.fora ? p.fora + ' fora do WhatsApp Web' : ''].filter(Boolean).join(' · '));
+  pintaZap(); pintaAvisos();
+}
+// ===== Menu ⋮ da lista (igual ao do WhatsApp Business): o que dá pelo WhatsApp Web funciona; o resto avisa "só no celular" =====
+const SO_CEL = {anuncios:['Anúncios','anúncio é feito no app do WhatsApp Business ou no Gerenciador de Anúncios da Meta'],
+  grupo:['Novo grupo','grupo: crie no celular (o app não mostra grupos)'], transm:['Transmissões comerciais','transmissão comercial é paga e sai pelo celular; aqui use COBRAR TODOS no Espeto'],
+  comun:['Comunidades','comunidade: só no celular'], disp:['Dispositivos conectados','dispositivos: só no celular (o PC já é um deles)'],
+  pag:['Pagamentos','pagamentos do WhatsApp: só no celular; o que você recebeu fica no Mês'], cfg:['Configurações','configurações do WhatsApp: só no celular']};
+function menuZap(){
+  const v = $('#zetm'); if(v){ v.remove(); return; }
+  const m = document.createElement('div'); m.className = 'zetm zsm'; m.id = 'zetm';
+  m.innerHTML = [['sel','Selecionar conversas'], ['listas','Listas'], ['fav','Favoritas'], ['cobrar','Cobranças (COBRAR)']].map(([a, t]) => `<button data-m="${a}"><span>${t}</span></button>`).join('')
+    + '<hr class="zsep">' + Object.entries(SO_CEL).map(([a, [t]]) => `<button data-m="${a}" class="zx"><span>${t}</span><small>só no celular</small></button>`).join('');
+  m.onclick = e => { const b = e.target.closest('button'); if(!b) return; m.remove(); const a = b.dataset.m;
+    if(a==='sel'){ zapSel = new Set(); return telaZap(); }
+    if(a==='listas') return telaListas();
+    if(a==='fav' || a==='cobrar') return telaZap(a);
+    toast(SO_CEL[a][1]); };
+  $('#folha').appendChild(m);
+}
+function telaListas(){   // Listas do WhatsApp Business = as etiquetas (com cor e quantas conversas) + Não lidas e Favoritas
+  zapTela = 'listas'; zapSel = null;
+  const f = $('#folha'), todas = conversas(), conta = fn => todas.filter(fn).length;
+  const ln = (id, ic, nome, n) => `<button class="zc zls" data-fl="${esc(id)}"><span class="av">${ic}</span><span class="zcx"><span class="zl1"><b>${nome}</b><time>${n}</time></span></span></button>`;
+  f.innerHTML = `<div class="zb"><button class="zi" id="fx" aria-label="voltar">${ZI.volta}</button><b class="zt">Listas</b></div>
+    <div class="zl"><p class="zlsd">As listas do seu WhatsApp Business são as etiquetas. Toque numa pra ver as conversas dela.</p>
+    ${ln('nlidas', '<i class="zn zp"></i>', 'Não lidas', conta(c=>!c.arq && c.temNova))}${ln('fav', '♥', 'Favoritas', conta(ehFav))}
+    ${Object.values(ZC.etq).map(e => ln(e.id, `<i class="ze zeg" style="background:${esc(e.cor || '#8696a0')}"></i>`, esc(e.nome), conta(c=>c.etqs.some(x=>x.id===e.id)))).join('')}</div>`;
+  $('#fx').onclick = ()=>telaZap('tudo');
+  f.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>telaZap(b.dataset.fl));
+  troca(f, 'listas'); if(!f.open) f.showModal();
+}
 function telaZap(filtro){
   if(filtro) zapFiltro = filtro;
+  const f = $('#folha'), rolou = zapTela==='lista' && f.querySelector('.zl') ? f.querySelector('.zl').scrollTop : 0;   // repintar não volta pro topo
+  const mnAberto = zapTela==='lista' ? $('#zetm') : null;
   zapTela = 'lista';
-  const f = $('#folha'), todas = conversas(), fil = zapFiltro, ativas = todas.filter(c=>!c.arq), arq = todas.filter(c=>c.arq);
+  const todas = conversas(), fil = zapFiltro, ativas = todas.filter(c=>!c.arq), arq = todas.filter(c=>c.arq);
   const etqs = Object.values(ZC.etq).map(e => { const cs2 = todas.filter(c=>c.etqs.some(x=>x.id===e.id)); return {...e, n:cs2.length, nl:cs2.filter(c=>!c.arq && c.temNova).length}; }).filter(e=>e.n);   // ordem = a do WhatsApp
   const nNl = ativas.filter(c=>c.temNova).length;
   const cobrar = todas.filter(c=>c.etqs.some(ehCobrar)), dv = {}; devedores().forEach(d=>dv[d.cid] = d.total);
-  if(fil!=='tudo' && fil!=='nlidas' && fil!=='cobrar' && fil!=='arq' && !ZC.etq[fil]) zapFiltro = 'tudo';
-  let cs = zapFiltro==='tudo' ? ativas : zapFiltro==='arq' ? arq : zapFiltro==='nlidas' ? ativas.filter(c=>c.temNova)
+  if(fil!=='tudo' && fil!=='nlidas' && fil!=='cobrar' && fil!=='arq' && fil!=='fav' && !ZC.etq[fil]) zapFiltro = 'tudo';
+  const favs = todas.filter(ehFav);
+  let cs = zapFiltro==='tudo' ? ativas : zapFiltro==='arq' ? arq : zapFiltro==='nlidas' ? ativas.filter(c=>c.temNova) : zapFiltro==='fav' ? favs
     : zapFiltro==='cobrar' ? cobrar : todas.filter(c=>c.etqs.some(e=>e.id===zapFiltro));
   const bu = semAcento(zapBusca.trim()), buD = zapBusca.replace(/\D/g,'');   // lupa: nome, ~nome, número ou texto de qualquer mensagem (inclui arquivadas)
   if(bu) cs = todas.filter(c => semAcento(c.titulo + ' ' + (c.push||'') + ' ' + ((c.z && c.z.nota) || '')).includes(bu) || (buD.length >= 3 && String(c.tel||'').includes(buD))
@@ -1413,21 +1569,32 @@ function telaZap(filtro){
   const chip = (id, txt) => `<button data-fl="${esc(id)}"${zapFiltro===id?' class="on"':''}>${txt}</button>`;
   const total = cobrar.reduce((s,c)=>s+(dv[c.cli]||0), 0);
   f.classList.add('zap'); delete f.dataset.k;
-  f.innerHTML = `<div class="zb"><button class="zi" id="fx" aria-label="voltar">${ZI.volta}</button><b class="zt">${zapFiltro==='arq'?'Arquivadas':'WhatsApp'}</b></div>
+  zapVis = cs.map(c=>c.k); if(zapSel) zapSel = new Set([...zapSel].filter(k => todas.some(c=>c.k===k)));
+  const sel = zapSel ? todas.filter(c=>zapSel.has(c.k)) : [];
+  f.innerHTML = (zapSel ? barraSel(sel) : `<div class="zb"><button class="zi" id="fx" aria-label="voltar">${ZI.volta}</button><b class="zt">${zapFiltro==='arq'?'Arquivadas':zapFiltro==='fav'?'Favoritas':'WhatsApp'}</b><button class="zi" id="zmn" aria-label="mais opções">${ZI.mais}</button></div>`) + `
     <div class="zbu"><input id="zbu" type="search" placeholder="Pesquisar nome, número ou mensagem" value="${esc(zapBusca)}" autocomplete="off"></div>
-    ${bu || zapFiltro==='arq' || !etqs.length && !ativas.some(c=>c.temNova) ? '' : `<div class="zch">${chip('tudo','Tudo')}${etqs.map(e=>chip(e.id, `${bolinha(e)}${esc(e.nome)}${e.nl?` <small>${e.nl}</small>`:''}`)).join('')}${chip('nlidas',`Não lidas${nNl?` <small>${nNl}</small>`:''}`)}${cobrar.length?chip('cobrar',`COBRAR <small>${cobrar.length}</small>`):''}</div>`}
+    ${bu || zapFiltro==='arq' || !etqs.length && !ativas.some(c=>c.temNova) ? '' : `<div class="zch">${chip('tudo','Tudo')}${etqs.map(e=>chip(e.id, `${bolinha(e)}${esc(e.nome)}${e.nl?` <small>${e.nl}</small>`:''}`)).join('')}${chip('nlidas',`Não lidas${nNl?` <small>${nNl}</small>`:''}`)}${favs.length?chip('fav',`Favoritas <small>${favs.length}</small>`):''}${cobrar.length?chip('cobrar',`COBRAR <small>${cobrar.length}</small>`):''}</div>`}
     <div class="zl">${!usuario ? '<p class="zvz">Entre na conta pra ver as mensagens.</p>'
       : !todas.length ? '<p class="zvz">Nenhuma mensagem ainda. Quando o número estiver ligado, as conversas aparecem aqui sozinhas e o cliente novo entra na lista de clientes.</p>' : ''}
     ${zapFiltro==='cobrar' ? `<p class="zcb">Etiqueta <b>Pagamento pendente</b> ou <b>pendente</b> no WhatsApp: ${cobrar.length} conversa${cobrar.length===1?'':'s'}${total?` · fiado no app ${R(total)}`:''}</p>` : ''}
     ${zapFiltro==='tudo' && !bu && arq.length ? `<button class="zc zarq" data-fl="arq"><span class="av">${ZI.arq}</span><span class="zcx"><span class="zl1"><b>Arquivadas</b><time>${arq.length}</time></span></span></button>` : ''}
     ${cs.length || !todas.length ? '' : '<p class="zvz">Nenhuma conversa aqui.</p>'}
-    ${cs.map(c=>{ const u = c.ult; return `<button class="zc" data-k="${esc(c.k)}">${avatar(c.titulo)}<span class="zcx">
+    ${cs.map(c=>{ const u = c.ult, sl = zapSel && zapSel.has(c.k); return `<button class="zc${sl?' sl':''}" data-k="${esc(c.k)}"><span class="zav">${avatar(c.titulo)}${sl?`<i class="zck">${ZI.ok}</i>`:''}</span><span class="zcx">
       <span class="zl1"><b>${esc(c.titulo)}</b>${c.push?`<span class="zpu">~${esc(c.push)}</span>`:''}<time${c.temNova?' class="nv"':''}>${u.data?quandoLista(c.quando):''}</time></span>
-      <span class="zl2"><span class="zu">${u.lado==='enviada'?tique(u, true):''}<span>${esc(u.texto||'')}</span></span>${zapFiltro==='cobrar' && dv[c.cli]?`<em class="zdv">${R(dv[c.cli])}</em>`:''}${c.sug?'<em class="zv">venda?</em>':''}${c.fix && !c.arq?`<i class="zpin">${ZI.pin}</i>`:''}${c.nl>0?`<i class="zn">${c.nl}</i>`:c.temNova?'<i class="zn zp"></i>':''}</span>${c.etqs.length?`<span class="zl3">${c.etqs.map(caixinha).join('')}</span>`:''}
+      <span class="zl2"><span class="zu">${u.lado==='enviada'?tique(u, true):''}<span>${esc(u.texto||'')}</span></span>${zapFiltro==='cobrar' && dv[c.cli]?`<em class="zdv">${R(dv[c.cli])}</em>`:''}${c.sug?'<em class="zv">venda?</em>':''}${ehFav(c)?'<i class="zfav">♥</i>':''}${c.fix && !c.arq?`<i class="zpin">${ZI.pin}</i>`:''}${c.nl>0?`<i class="zn">${c.nl}</i>`:c.temNova?'<i class="zn zp"></i>':''}</span>${c.etqs.length?`<span class="zl3">${c.etqs.map(caixinha).join('')}</span>`:''}
       </span></button>`; }).join('')}</div>`;
-  $('#fx').onclick = ()=> zapFiltro==='arq' ? telaZap('tudo') : f.close();
-  f.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>telaZap(b.dataset.fl));
-  f.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>telaConversa(b.dataset.k));
+  if(zapSel) ligaSel(f, sel); else { $('#fx').onclick = ()=> zapFiltro==='arq' || zapFiltro==='fav' ? telaZap('tudo') : f.close(); $('#zmn').onclick = menuZap; }
+  f.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{ zapSel = null; telaZap(b.dataset.fl); });
+  f.querySelectorAll('[data-k]').forEach(b=>{   // segurar (ou botão direito no PC) = seleciona, como no WhatsApp
+    let t = 0, longo = false, x0 = 0, y0 = 0;
+    b.onpointerdown = e=>{ longo = false; x0 = e.clientX; y0 = e.clientY; clearTimeout(t); t = setTimeout(()=>{ longo = true; if(navigator.vibrate) navigator.vibrate(15); selZap(b.dataset.k); }, 450); };
+    b.onpointermove = e=>{ if(Math.abs(e.clientX-x0) + Math.abs(e.clientY-y0) > 10) clearTimeout(t); };
+    b.onpointerup = b.onpointercancel = b.onpointerleave = ()=>clearTimeout(t);
+    b.oncontextmenu = e=>{ e.preventDefault(); clearTimeout(t); if(!longo) selZap(b.dataset.k); longo = true; };
+    b.onclick = ()=>{ if(longo){ longo = false; return; } zapSel ? selZap(b.dataset.k) : telaConversa(b.dataset.k); };
+  });
+  if(rolou) f.querySelector('.zl').scrollTop = rolou;
+  if(mnAberto) f.appendChild(mnAberto);   // repintar (tique novo, espelho) não fecha o menu aberto
   const ib = $('#zbu'); ib.oninput = () => { zapBusca = ib.value; telaZap(); };
   if(focoBu){ ib.focus(); ib.setSelectionRange(ib.value.length, ib.value.length); }
   troca(f, 'zap'); if(!f.open) f.showModal();
@@ -1654,7 +1821,10 @@ addEventListener('message', async e => {
   else if(m.tipo === 'espelho') gravaEspelho(m.esp);
   else if(m.tipo === 'etiquetou') (m.lista || []).forEach(etiquetou);
   else if(m.tipo === 'etiquetarFila'){ if(m.r && m.r.erro) etiquetou({pedido:m.pedido, ok:false, erro:m.r.erro}); }
-  else if(m.tipo === 'naFila'){ if(m.r && m.r.semWhats) toast('abra o WhatsApp Web neste PC pra enviar'); }
+  else if(m.tipo === 'agiu') agiu(m);
+  else if(m.tipo === 'loteFila'){ if(m.r && m.r.erro){ const p = PED_LOTE[m.pedido]; if(p) agiu({pedido:m.pedido, acao:p.acao, lista:[{tel:'', ok:false, erro:m.r.erro}]}); } }
+  else if(m.tipo === 'naFila'){ if(m.r && m.r.semWhats && !naFila.calado) toast('abra o WhatsApp Web neste PC pra enviar');
+    const antes = zapSaude(); SAUDE = m.r ? {sem: !!m.r.semWhats, s: m.r.saude || null, em: Date.now()} : SAUDE; if(zapSaude() !== antes) pintaAvisos(); naFila.calado = false; }
   else if(m.tipo === 'enviou'){   // resultado dos envios pelo WhatsApp Web → grava na nuvem
     if(!sb || !usuario || !m.lista || !m.lista.length) return;
     const {error} = TESTE ? {error:null} : await sb.functions.invoke('zap-extensao', {body:{feitas:m.lista}});
@@ -1692,7 +1862,20 @@ async function despachaZap(){
   }
   if(lista.length) praExt({tipo:'enviar', lista});
 }
-setInterval(despachaZap, 10000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
+setInterval(despachaZap, 10000);
+// SAÚDE do WhatsApp do PC (26/11): a cada 20 s pergunta à extensão; aviso no topo SÓ quando tem mensagem parada (a aba se cura sozinha em ~4 min)
+let SAUDE = null; const naFila = {calado:false};
+function zapSaude(){
+  if(TESTE || !EXT || !ponteZap()) return '';
+  const presas = Object.values(MSG.m).filter(m => m.entrega === 'fila' && Date.now() - new Date(m.data) > 3 * 60000).length;
+  if(!presas || !SAUDE) return '';
+  if(SAUDE.sem) return presas + ' mensage' + (presas===1?'m':'ns') + ' esperando: abra o WhatsApp Web neste PC.';
+  const s = SAUDE.s;
+  if(!s || Date.now() - s.em > 90000) return presas + ' esperando: a aba do WhatsApp Web parou de responder (aperte F5 nela).';
+  if(s.erro) return presas + ' esperando · ' + s.erro + '.';
+  return presas + ' esperando há um tempo · consertando sozinho (recarrega a aba do WhatsApp Web).';
+}
+setInterval(() => { if(EXT && ponteZap() && !TESTE){ naFila.calado = true; praExt({tipo:'enviar', lista:[]}); } }, 20000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
 function janelaZap(c){ if(ponteZap()) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
   const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
 async function responderZap(c, texto, depois){
