@@ -1363,7 +1363,7 @@ function okConfirma(cid){
 // pendente ou não tem nome, e PROPÕE: data prometida ("dia 20", "sexta"), pagou ("fiz o pix", comprovante), nome e cidade.
 // Ele aprova em lote até ligar "fazer sozinho" (só o certeiro; o "confira" sempre pergunta). Valor e "pagou" seguem no sino (CONFIRMAR).
 const semAc = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const LE_PAG = /\b(pag|pix|acert|transf|deposit|dinheiro|quit|te passo|te mando|mando o|faco o|o valor|salario|devo|devendo)/;
+const LE_PAG = /\b(pag|pix|acert|transf|deposit|dinheiro|quit|te passo|te mando|mando o|manda o|faco o|o valor|salario|devo|devendo|te dou|te entrego|passo os|manda os|mando os|\d+ ?(reais|conto|pila)\b|r\$)/;   // "manda os 12 dia 2" (real, 26/11)
 const LE_PAGOU = /\b(fiz|fizemos|mandei|enviei|realizei|ja fiz|ja mandei)\b.{0,12}\b(pix|transferencia|pagamento|deposito|o valor)|\bpaguei\b|\bja pag(uei|o|amos)\b|\bpix (feito|enviado|realizado|pago|caiu)\b|\b(ta|esta|ja ta) pago\b|\bcomprovante\b|\btransferi\b|^\W*pago\W*$/;
 const LE_NAO = /\b(nao|ainda nao|nem)\b.{0,10}\b(paguei|fiz|mandei|consegui|caiu|transferi|pago)/;
 const LE_FUT = /\b(vou|vai|irei|vamos|consigo|posso)\s+(te\s+)?(pagar|fazer|transferir|acertar|depositar|mandar o pix|passar)/;
