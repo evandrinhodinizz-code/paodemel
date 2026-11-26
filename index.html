@@ -1069,6 +1069,7 @@ function abrirWhats(c, texto, depois){
 }
 // COBRANÇA EM ETAPAS: 1ª = texto; 2ª e 3ª = áudio gravado por ele (Menu ☰ > Mensagens de cobrança); depois da 3ª = LIGAR.
 // Com o envio pelo PC (extensão) o COBRAR abre a conversa no ZAP com os 3 botões; sem ele, abre o WhatsApp com a 1ª (texto).
+const BARRA_FECHADA = new Set();
 let COBRA = null;   // {cid, fila} = conversa aberta pelo COBRAR (mostra a barra de cobrança)
 function etapaDe(cid, d){ d ||= devedores().find(x=>x.cid===cid); const e = (D.cfg.etapas||{})[cid]; return e && d && e.desde === d.maisAntiga ? e : null; }   // pagou e fez fiado novo = começa da 1ª
 const ROT_ET = {1:'1ª cobrança (texto)', 2:'2ª cobrança (áudio)', 3:'3ª cobrança (áudio)'};
@@ -1102,17 +1103,20 @@ async function enviaPixCobranca(c, d){
 }
 function barraCobra(c){   // barra em cima do campo de mensagem: em que cobrança está + 1ª / 2ª / 3ª (+ LIGAR)
   const el = $('#zcob'); if(!el) return;
-  if(!COBRA || COBRA.cid !== c.cli){ el.innerHTML = ''; el.hidden = true; return; }
-  const d = devedores().find(x=>x.cid===COBRA.cid);
+  // a barra aparece em QUALQUER conversa de quem deve (também pela aba WhatsApp, celular incluso); o ✕ fecha só nesta conversa até apertar COBRAR de novo
+  const cid = c.cli, eCobra = !!(COBRA && cid && COBRA.cid === cid), dd = cid && devedores().find(x=>x.cid===cid);
+  if(eCobra) BARRA_FECHADA.delete(cid);
+  if(!eCobra && !(dd && !BARRA_FECHADA.has(cid))){ el.innerHTML = ''; el.hidden = true; return; }
+  const d = dd;
   if(!d){ el.hidden = false; el.innerHTML = `<div class="zcl"><span><b>Pago</b> · nada em aberto</span><button class="zcx" data-cx>✕</button></div>`; return; }
   const e = etapaDe(d.cid, d), n = e ? e.n : 0, au = D.cfg.audios||{};
   const bt = k => { const feito = n >= k, prox = n + 1 === k, arm = el._arm === k, falta = k > 1 && k < 9 && !(au[k] && au[k].path);
     return `<button class="zcb${k===9?'':feito?' ok':''}${k===9?'':prox?' prox':''}${arm?' arm':''}" data-cb="${k}">${arm ? 'TOQUE DE NOVO PRA ENVIAR' : k===9 ? '◆ ENVIAR PIX' : (feito?'✓ ':'') + (k===1?'1ª MENSAGEM':k+'ª ÁUDIO') + (falta?' · gravar':'')}</button>`; };
   el.hidden = false;
   el.innerHTML = `<div class="zcl"><span>Deve <b>${R(d.total)}</b> · há ${dias(d.maisAntiga)}d · ${n ? 'feita a ' + ROT_ET[n] + (e.d ? ' ' + (dias(e.d) ? 'há ' + dias(e.d) + 'd' : 'hoje') : '') : 'nenhuma cobrança ainda'}</span><button class="zcx" data-cx aria-label="fechar">✕</button></div>
-    <div class="zcbs">${bt(1)}${bt(2)}${bt(3)}${bt(9)}${n>=3 ? `<a class="zcb ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}${COBRA.fila ? '<button class="zcb" data-prox>PRÓXIMO ›</button>' : ''}</div>`;
+    <div class="zcbs">${bt(1)}${bt(2)}${bt(3)}${bt(9)}${n>=3 ? `<a class="zcb ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}${eCobra && COBRA.fila ? '<button class="zcb" data-prox>PRÓXIMO ›</button>' : ''}</div>`;
   el.onclick = ev => { const b = ev.target.closest('[data-cb],[data-cx],[data-prox]'); if(!b) return;
-    if(b.dataset.cx !== undefined){ COBRA = null; return barraCobra(c); }
+    if(b.dataset.cx !== undefined){ COBRA = null; BARRA_FECHADA.add(cid); return barraCobra(c); }
     if(b.dataset.prox !== undefined){ COBRA = null; return cobrarFila(); }
     const k = +b.dataset.cb;
     if(k > 1 && k < 9 && !(au[k] && au[k].path)){ toast('grave a ' + k + 'ª cobrança primeiro'); return telaSecao('cobranca'); }
