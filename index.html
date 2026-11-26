@@ -674,6 +674,11 @@ const ICO = {lapis:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" 
   lixo:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>'};
 function faixaDe(n){ return n >= (D.cfg.diasRisco||30) ? 'risco' : n > (D.cfg.diasNovo||7) ? 'antigos' : 'recentes'; }
 const faixaD = d => { const e = etapaDe(d.cid, d); return e && e.n >= 3 ? 'risco' : faixaDe(dias(d.maisAntiga)); };   // passou da 3ª cobrança (LIGAR) = RISCO (decisão dele 25/11)
+function pintaAcomp(){   // lista ACOMPANHAR: quem prometeu pagar numa data, por data; no dia o COBRAR TODOS volta a incluir
+  const vai = devedores().map(d => ({d, p:prometeu(d.cid, d)})).filter(x => x.p).sort((a, b) => a.p.ate < b.p.ate ? -1 : 1);
+  if(!vai.length) return '';
+  return `<div class="pendwa"><b>ACOMPANHAR · ${vai.length} prometeram data</b>${vai.map(x => `<div class="pendl"><span><b>${diaCurto(x.p.ate).toUpperCase()}</b> · ${esc(x.d.cli.nome)}</span><span>${R(x.p.valor || x.d.total)}</span></div>`).join('')}<div class="miuda">O app põe a etiqueta Acompanhar no WhatsApp e tira no dia; depois dele, entra no COBRAR TODOS.</div></div>`;
+}
 function pintaEspeto(){
   const todos = devedores(), total = todos.reduce((s,d)=>s+d.total,0), dn = D.cfg.diasNovo||7, dr = D.cfg.diasRisco||30;
   const cont = {todos:todos.length, recentes:0, antigos:0, risco:0}; todos.forEach(d=>cont[faixaD(d)]++);
@@ -695,7 +700,7 @@ function pintaEspeto(){
       <div class="etapa e${et?et.n:0}">${[1,2,3].map(k=>`<i class="${et&&et.n>=k?'on':''}"></i>`).join('')}<span>${et ? ROT_ET[et.n] + ' · ' + (dias(et.d) ? 'há ' + dias(et.d) + 'd' : 'hoje') + (et.n>=3 ? ' · agora: LIGAR' : '') : 'sem cobrança ainda'}</span></div>
       ${(() => { const pm = prometeu(d.cid, d); return pm ? '<div class="prom">PROMETEU PAGAR ' + dataBR(pm.ate) + ' · só cobra depois</div>' : ''; })()}<div class="acoes">${et && et.n>=3 && d.cli.tel ? `<a class="bt-ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}<button class="zap" data-cobrar="${d.cid}">${et ? (et.n>=3 ? 'COBRAR' : 'COBRAR ' + (et.n+1) + 'ª') : 'COBRAR'}</button><button data-receber="${d.cid}">RECEBI</button></div></div>`; }).join('')}</div>`
    : `<div class="vazio-esp">${todos.length ? 'Ninguém neste filtro.' : 'Espeto vazio.<br>Ninguém devendo.'}</div>`)
-   + pintaPend();
+   + pintaAcomp() + pintaPend();
   $$('#espeto [data-edita]').forEach(b=>b.onclick=()=>notasDo(b.dataset.edita));
   $$('#espeto [data-apaga]').forEach(b=>b.onclick=()=>{ const cid = b.dataset.apaga, abertas = (fiados()[cid]||[]).filter(f=>f.falta>0.004);
     if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
@@ -1437,6 +1442,13 @@ const LE_NAO = /\b(nao|ainda nao|nem)\b.{0,10}\b(paguei|fiz|mandei|consegui|caiu
 const LE_FUT = /\b(vou|vai|irei|vamos|consigo|posso)\s+(te\s+)?(pagar|fazer|transferir|acertar|depositar|mandar o pix|passar)/;
 const LE_PASS = /\b(fiz|paguei|mandei|enviei|transferi|comprovante|feito|caiu)\b/;
 const lePagou = t => LE_PAGOU.test(t) && !LE_NAO.test(t) && !(LE_FUT.test(t) && !LE_PASS.test(t));
+function leValor(tx){   // "mandei 25", "R$ 37,50", "paguei 25 reais" → número (0 = não achou). Ignora datas ("dia 20", "20/12").
+  const t = semAc(tx).replace(/\bdia\s*\d+/g, ' ').replace(/\d{1,2}\s*\/\s*\d{1,2}(\s*\/\s*\d+)?/g, ' ');
+  const m = t.match(/r\$\s*(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/) || t.match(/\b(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|conto|pila)\b/)
+    || t.match(/\b(?:mandei|enviei|paguei|transferi|fiz|pix|pagamento)\s+(?:um\s+)?(?:pix\s+)?(?:de\s+)?(?:o\s+valor\s+de\s+)?(\d+(?:[.,]\d{1,2})?)\b(?![.,]\d)/);
+  if(!m) return 0; let x = m[1]; x = x.includes(',') ? x.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(x) ? x.replace(/\./g, '') : x;
+  const v = parseFloat(x); return v > 0 && v < 5000 ? v : 0;
+}
 const LE_SEM = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
 const leDia = (y, m, d) => new Date(y, m, d, 12).toISOString();   // meio-dia local (não pula de dia no fuso)
 function dataPrometida(texto, quando){   // "dia 20", "20/12", "sexta", "semana que vem", "amanhã", "fim do mês"… → dia em que prometeu pagar
@@ -1489,11 +1501,12 @@ function leProps(forca){
     if(!d && !pend && !(semNome && (cl || c.etqs.length))) return;
     const k = c.cli || 't' + chaveTel(c.tel), tel = c.z ? c.z.tel : c.tel, desde = d ? d.maisAntiga : new Date(Date.now() - 30 * 864e5).toISOString();
     const base = {k, cid:c.cli || null, tel, noZap:!!c.z, agenda, quem:c.titulo, valor:d ? d.total : 0, desde:d ? d.maisAntiga : null};
-    let pr = null, pg = null, nm = null, ci = null, env = null;
+    let pr = null, pg = null, nm = null, ci = null, env = null, vl = null;
     c.msgs.forEach(m => {
       if(m.lado === 'enviada'){ env = m; return; }
       if(m.data < lim) return;
       const tx = m.texto || '', t = semAc(tx);
+      if((d || pend) && m.data >= desde && (lePagou(t) || LE_PAG.test(t))){ const v = leValor(tx); if(v) vl = {v, m}; }
       if((d || pend) && m.data >= desde){
         if(lePagou(t)) pg = {m, forca:'forte'};
         else if(/image|document/.test(m.tipo || '') && !dataPrometida(tx, m.data)) pg = {m, forca:'media', img:true};   // foto/arquivo de quem deve = comprovante? (confira)
@@ -1505,7 +1518,7 @@ function leProps(forca){
     });
     if(pg && (!pr || pg.m.data > pr.m.data)){
       const ok = Object.values(ZC.etq).find(ehOk), temOk = ok && c.z && (c.z.etiquetas || []).includes(ok.id), aberto = c.cli && cf.okPend[c.cli] && !cf.okPend[c.cli].fim;
-      if(!(temOk && (!d || aberto))) novo({...base, id:'pg:' + pg.m.id, tipo:'pagou', m:pg.m, forca:pg.forca, img:!!pg.img});
+      if(!(temOk && (!d || aberto))) novo({...base, id:'pg:' + pg.m.id, tipo:'pagou', m:pg.m, forca:pg.forca, img:!!pg.img, dito:vl && Math.abs(Date.parse(pg.m.data) - Date.parse(vl.m.data)) < 864e5 ? vl.v : 0});
     } else if(pr && pr.ate >= hj){
       const j = (cf.promessas || {})[k]; if(!(j && j.msg === pr.m.id)) novo({...base, id:'pr:' + pr.m.id, tipo:'promessa', m:pr.m, ate:pr.ate, forca:'forte'});
     }
@@ -1523,8 +1536,10 @@ function leProps(forca){
 const esperaOk = cid => !!(D.cfg.okPend && D.cfg.okPend[cid] && !D.cfg.okPend[cid].fim);   // disse que pagou e o sino ainda pergunta: não cobra
 const prometeu = (cid, d) => { const p = (D.cfg.promessas || {})[cid]; d ||= devedores().find(x => x.cid === cid);
   return p && (!d || !p.desde || p.desde === d.maisAntiga) && new Date(p.ate) >= new Date(new Date().setHours(0, 0, 0, 0)) ? p : null; };   // só cobra DEPOIS do dia prometido
+const leIgual = p => !!(p.cid && p.dito && p.valor > 0.004 && Math.abs(p.dito - p.valor) < 0.01 && p.forca === 'forte');   // disse o valor e é igual à dívida: baixa sozinho
 function leRotulo(p){
   if(p.tipo === 'promessa') return `vai pagar <b>${dataBR(p.ate)}</b>${p.valor ? ' · ' + R(p.valor) : ''}: COBRAR TODOS espera até lá`;
+  if(p.tipo === 'pagou' && p.dito){ const igual = leIgual(p); return `<b>pagou ${R(p.dito)}</b>${p.valor ? ' · deve ' + R(p.valor) : ''}${igual ? ': <b>valor certo, baixa sozinho</b> (com DESFAZER)' : p.valor ? ': valor diferente, o sino pergunta' : ''}`; }
   if(p.tipo === 'pagou') return `<b>pagou</b>${p.img ? ' (mandou foto/arquivo: é o comprovante?)' : ''}${p.noZap ? ': põe <b>ok</b> e arquiva' : ''}${p.cid && p.valor ? ' · o sino pergunta se foram ' + R(p.valor) : p.noZap ? ' · tira o pendente' : ''}`;
   if(p.tipo === 'nome') return `${p.doApp ? 'salvar contato' : 'nome'}: <b>${esc(p.nome)}</b>${p.push ? ' (nome do perfil dele)' : ''}${p.agenda ? ' · salva na agenda do WhatsApp' : ''}`;
   return `cidade: <b>${esc(p.cidade)}</b>${p.agenda ? ' · vai junto no contato' : ''}`;
@@ -1547,14 +1562,17 @@ function leTela(){
   dlg.showModal();
 }
 function leAplica(ps){
-  const cf = D.cfg, zap = {...(cf.leZap || {})}, z1 = t => (zap[t] = {...(zap[t] || {})});
+  const cf = D.cfg, zap = {...(cf.leZap || {})}, z1 = t => (zap[t] = {...(zap[t] || {})}), baixa = [];
   ps.forEach(p => {
     cf.leFeito = {...(cf.leFeito || {}), [p.id]: hoje()};
-    if(p.tipo === 'promessa') cf.promessas = {...(cf.promessas || {}), [p.k]: {ate:p.ate, msg:p.m.id, txt:String(p.m.texto || '').slice(0, 80), desde:p.desde}};
+    if(p.tipo === 'promessa'){ cf.promessas = {...(cf.promessas || {}), [p.k]: {ate:p.ate, msg:p.m.id, txt:String(p.m.texto || '').slice(0, 80), desde:p.desde}};
+      if(p.noZap){ z1(p.tel).acomp = 1; cf.acompApp = {...(cf.acompApp || {}), [p.tel]:p.k}; } }
     if(p.tipo === 'pagou'){
       if(p.cid && p.valor > 0.004 && !(cf.okPend[p.cid] && !cf.okPend[p.cid].fim)) cf.okPend = {...cf.okPend, [p.cid]: {valor:p.valor, desde:new Date().toISOString(), fim:null}};
+      if(leIgual(p)) baixa.push(p.cid);
       if(p.noZap){ const z = z1(p.tel); z.ok = 1; z.arq = 1; if(!(p.cid && p.valor > 0.004)) z.tira = 1; }   // deve no Espeto: o pendente sai no RECEBI (etiqueta automática)
       if(cf.promessas && cf.promessas[p.k]){ const pr = {...cf.promessas}; delete pr[p.k]; cf.promessas = pr; }
+      if(p.noZap && (cf.acompApp || {})[p.tel]) z1(p.tel).tiraAc = 1;
     }
     if(p.tipo === 'nome'){ const cl = p.cid && D.clientes.find(x => x.id === p.cid); if(cl && pareceTel(cl.nome)) cl.nome = p.nome; if(p.agenda && p.noZap) z1(p.tel).nome = p.nome; }
     if(p.tipo === 'cidade'){ cf.cidades = {...(cf.cidades || {}), [p.k]: p.cidade}; if(p.agenda && p.noZap) z1(p.tel).sobre = p.cidade; }
@@ -1562,6 +1580,14 @@ function leAplica(ps){
   Object.keys(zap).forEach(t => { const z = zap[t]; if(z.sobre && !z.nome){ const c = conversas().find(x => x.z && x.z.tel === t), cl = c && c.cli && cliPor(c.cli);   // só cidade: o contato precisa de um nome
     const n = cl && !pareceTel(cl.nome) ? cl.nome : ''; if(n) z.nome = n; else delete z.sobre; } if(!Object.keys(z).length) delete zap[t]; });
   cf.leZap = zap; LE_CACHE.t = 0; salvar(); tudo(); leZapRoda();
+  baixa.forEach(cid => okConfirma(cid));   // valor certo: dá baixa (toast com DESFAZER)
+}
+const ehAcomp = e => /^acompanhar$/i.test(((e && e.nome) || '').trim());
+function acompVolta(){   // chegou o dia prometido (ou ele pagou): o app tira a etiqueta Acompanhar que ele mesmo pôs e o cliente volta pro COBRAR TODOS
+  const ap = D.cfg.acompApp || {}, tels = Object.keys(ap); if(!tels.length || !usuario) return;
+  const hj0 = new Date(new Date().setHours(0, 0, 0, 0)), zap = {...(D.cfg.leZap || {})}, novo = {...ap}; let mexeu = false;
+  tels.forEach(t => { const j = (D.cfg.promessas || {})[ap[t]]; if(j && new Date(j.ate) >= hj0) return; zap[t] = {...(zap[t] || {}), tiraAc:1}; delete novo[t]; mexeu = true; });
+  if(mexeu){ D.cfg.leZap = zap; D.cfg.acompApp = novo; salvar(); }
 }
 // O que muda no WhatsApp vai numa fila (D.cfg.leZap, sobe pra nuvem): o PC com a extensão faz, 1 ação por vez, mesmo se ele aprovou no celular.
 let LE_RODA = null;
@@ -1571,6 +1597,9 @@ function leZapRoda(){
   const okE = Object.values(ZC.etq).find(ehOk), pen = Object.values(ZC.etq).filter(ehCobrar), so = a => tels.filter(t => zap[t][a]), gs = [];
   if(okE && so('ok').length) gs.push({acao:'etiqueta', tels:so('ok'), extra:{etiqueta:okE.id, por:true}});
   pen.forEach(e => { const ts = so('tira').filter(t => (ZC.conv[t].etiquetas || []).includes(e.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:e.id, por:false}}); });
+  const ac = Object.values(ZC.etq).find(ehAcomp);
+  if(ac && so('acomp').length) gs.push({acao:'etiqueta', tels:so('acomp'), extra:{etiqueta:ac.id, por:true}});
+  if(ac){ const ts = so('tiraAc').filter(t => (ZC.conv[t].etiquetas || []).includes(ac.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:ac.id, por:false}}); }
   if(so('arq').length) gs.push({acao:'arquivar', tels:so('arq'), extra:{}});
   const ct = so('nome'); if(ct.length && (TESTE || EXTV >= 7)) gs.push({acao:'contato', tels:ct, extra:{nomes:Object.fromEntries(ct.map(t => [t, {nome:zap[t].nome, sobre:zap[t].sobre || ''}]))}});
   const resto = {}; if(!(TESTE || EXTV >= 7)) ct.forEach(t => resto[t] = {nome:zap[t].nome, sobre:zap[t].sobre});   // extensão antiga: o contato espera a 2.8.0
@@ -2373,7 +2402,7 @@ function pendentes(s = lerSinc()){
   return p;
 }
 // nuvem + campos que mudaram aqui; listas de datas (cobrados, etapas, áudios) juntam cliente a cliente
-const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
+const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
 function juntaCfg(nuvem, aqui, campos){
   const r = Object.assign({}, nuvem);
   (campos || []).forEach(k => { r[k] = CFG_MAPA.includes(k) && aqui[k] && typeof aqui[k] === 'object' ? Object.assign({}, nuvem[k] || {}, aqui[k]) : aqui[k]; });
@@ -2525,7 +2554,7 @@ async function iniciarNuvem(){
 // ===== Começo =====
 $('#qr').innerHTML=[1,1,1,0,1,0,1,1,1,1,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,1,0,1,0,1,0,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1].map(v=>`<i class="${v?'':'v'}"></i>`).join('');
 $('#data').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','').toUpperCase();
-function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaMes(); etqAuto(); okAuto(); leAuto(); leZapRoda(); }
+function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaMes(); etqAuto(); okAuto(); leAuto(); acompVolta(); leZapRoda(); }
 // Modo teste: 12 clientes + ~200 mensagens de exemplo; ENVIAR finge que mandou (3 em 3 falha, pra ver o "!").
 function carregaTeste(){
   const nomes = ['Ana Souza','Bruno Lima','Carla Mendes','Diego Rocha','Elaine Costa','Fábio Nunes','Gabi Torres','Hugo Prado','Íris Melo','João Pedro','Kátia Reis','Lucas Dias'];
@@ -2558,7 +2587,8 @@ function carregaTeste(){
   leM(3, 'tc12', '5541999112222', '', 'recebida', 'Te pago sexta, pode ser?', 29);
   leM(4, c3.id, c3.tel, c3.nome, 'enviada', 'Oi Diego, tudo bem? Ficou R$ 25,00 do pão de mel, o Pix é teste@exemplo.com', 3);
   leM(5, c3.id, c3.tel, c3.nome, 'recebida', 'Opa, consigo só dia 20, tudo bem?', 2);
-  leM(6, c6.id, c6.tel, c6.nome, 'recebida', 'Fiz o pix agora 🙏 obrigada', 1);
+  leM(6, c6.id, c6.tel, c6.nome, 'recebida', 'Fiz o pix agora, mandei 25 🙏 obrigada', 1);
+  leM(11, c9.id, c9.tel, c9.nome, 'recebida', 'Paguei 10 reais no pix', 0.45);
   leM(7, c9.id, c9.tel, c9.nome, 'recebida', '', 0.5, 'image');
   leM(8, c9.id, c9.tel, c9.nome, 'recebida', 'Meu nome é João Pedro, sou de Contenda', 0.4);
   leM(9, null, ze, 'Seu Zé', 'recebida', 'Já paguei ontem, segue o comprovante', 6);
