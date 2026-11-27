@@ -935,6 +935,30 @@ function recebidoDesde(ini){
   const fiado = pg.reduce((s, p) => s + p.valor, 0), naHora = Object.values(forma).reduce((s, x) => s + x, 0);
   return {vs, pg, forma, fiado, naHora, total: naHora + fiado};
 }
+// AGRADECER OS QUE FALTAM (pedido dele 26/11): pagamentos do mês de quem ele ainda não agradeceu (nem o app, nem ele na conversa depois de pagar)
+const LE_OBRIG = /obrigad|valeu|agradec|brigad|🙏|❤|😘|😊/i;
+function semAgradecer(){
+  const ini = new Date(new Date().getFullYear(), new Date().getMonth(), 1), ag = D.cfg.agradeceu || {}, cv = conversas();
+  return D.pagamentos.filter(p => new Date(p.data) >= ini && !ag[p.id]).map(p => {
+    const cl = cliPor(p.cli), c = cv.find(x => x.cli === p.cli);
+    if(!cl || !cl.tel || ehLoja(cl.tel)) return null;
+    if(c && c.msgs.some(m => m.lado === 'enviada' && m.data > p.data.slice(0, 10) && LE_OBRIG.test(m.texto || ''))) return null;   // ele já agradeceu na conversa
+    return {p, cl};
+  }).filter(Boolean);
+}
+function telaAgradecer(){
+  const ls = semAgradecer(), dlg = $('#dlg');
+  if(!ls.length){ irPara(3); return toast('todos os pagamentos do mês já foram agradecidos'); }
+  dlg.innerHTML = `<h3>Agradecer os que faltam · ${ls.length}</h3>
+    <div class="peq">Pagamentos deste mês sem agradecimento. O app manda "Recebi, Nome, R$ X! Obrigado 🙏" e salva o contato. Sai devagar (o WhatsApp do PC limita o ritmo).</div>
+    <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" checked><label for="ag${i}"><b>${esc(x.cl.nome)}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}</label></div>`).join('')}</div>
+    <div class="linha"><button class="bt" id="agx">DEPOIS</button><button class="bt cheio" id="ags">AGRADECER MARCADOS</button></div>`;
+  $('#agx').onclick = () => dlg.close();
+  $('#ags').onclick = () => { if(!(EXT || TESTE)) return toast('agradecer: só no PC com o WhatsApp Web aberto');
+    const sim = [...$$('#dlg [data-ag]')].filter(b => b.checked).map(b => ls[+b.dataset.ag]); dlg.close();
+    sim.forEach(x => agradece(x.p.cli, x.p.valor, x.p.id)); salvar(); tudo(); irPara(3); toast(sim.length + ' agradecimento' + (sim.length === 1 ? '' : 's') + ' na fila · contatos salvos'); };
+  dlg.showModal();
+}
 function pintaReceb(){
   const el = $('#receb'); if(!el) return;
   const hj = new Date(new Date().setHours(0,0,0,0)), seg = new Date(hj); seg.setDate(hj.getDate() - (hj.getDay() + 6) % 7);
@@ -959,6 +983,9 @@ function pintaReceb(){
     ${blocoForma(s)}
     <div class="l" style="font-size:14px;margin-top:10px"><b>RECEBIDO NO MÊS</b><b>${v2(m.total)}</b></div>
     ${blocoForma(m)}
+    <hr><div class="c">PAGAMENTOS DE FIADO NO MÊS · ${m.pg.length}</div>
+    ${m.pg.length ? m.pg.slice().sort((a, b) => a.data < b.data ? 1 : -1).map(p => `<div class="l"><span>${dataBR(p.data)} · ${nome(p.cli)} ${(D.cfg.agradeceu || {})[p.id] ? '· ✓ agradecido' : ''}</span><span>${v2(p.valor)}</span></div>`).join('') : '<div class="miuda">Nenhum fiado pago no mês.</div>'}
+    ${usuario && semAgradecer().length ? `<button class="bt cheio" id="agFalta" style="width:100%;margin-top:8px">AGRADECER OS QUE FALTAM · ${semAgradecer().length}</button>` : ''}
     <hr><div class="c">O QUE ENTROU NA SEMANA</div>
     ${entrou.length ? entrou.map(x => `<div class="l"><span>${diaCurto(x.data)} · ${x.txt}</span><span>${v2(x.v)}</span></div>`).join('') : '<div class="miuda">Nada ainda esta semana.</div>'}
     <hr><div class="c">VAI PAGAR · ${vai.length} · ${R(vaiTot)}</div>
@@ -968,6 +995,7 @@ function pintaReceb(){
       return `<div class="l"${x.e.n >= 3 ? ' style="color:var(--verm)"' : ''}><span>${nome(x.d.cid)} · ${rotE(x.e.n)} · ${n === 0 ? 'hoje' : 'há ' + n + 'd'}</span><span>${v2(x.d.total)}</span></div>`; }).join('') : '<div class="miuda">Ninguém em cobrança agora.</div>'}
     <div class="miuda">Recebido = venda na hora (pix/dinheiro/cartão) + fiado pago. "Vai pagar" vem do que o cliente escreveu no ZAP; quem prometeu sai do "cobrando" até o dia.</div>
   </div></div>`;
+  const af = $('#agFalta'); if(af) af.onclick = telaAgradecer;
 }
 
 // ===== Cliente novo / editar =====
