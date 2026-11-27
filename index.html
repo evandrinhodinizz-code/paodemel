@@ -699,7 +699,7 @@ function pintaAgend(){   // aba AGENDADO (pedido dele 26/11): quem prometeu paga
   $('#agend').innerHTML = `<div class="cab"><small>AGENDADO · ${vai.length} CLIENTE${vai.length === 1 ? '' : 'S'}</small><b>${R(total)}</b></div>`
     + (sem ? '<div class="bilhete">Crie no WhatsApp a etiqueta <b>Agendado pagamento</b>: o app põe e tira sozinho.</div>' : '')
     + (vai.length ? `<div class="pendwa">${vai.map(x => { const dd = dias(x.p.ate), j = Math.round((new Date(x.p.ate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 864e5);
-      return `<div class="pendl ag"><span><b>${diaCurto(x.p.ate).toUpperCase()}</b> · ${esc(x.d.cli.nome)}<br><small>${j > 0 ? 'faltam ' + j + ' dia' + (j === 1 ? '' : 's') : j === 0 ? 'é hoje' : 'passou há ' + (-j) + ' dia' + (j === -1 ? '' : 's')}${x.p.txt ? ' · "' + esc(x.p.txt) + '"' : ''}</small></span><span class="agv">${v2(x.p.valor || x.d.total)}<button class="bt" data-agrec="${x.d.cid}">RECEBI</button><button class="bt" data-agtira="${x.d.cid}" title="cancelar o agendamento">✕</button></span></div>`; }).join('')}
+      return `<div class="pendl ag"><span><b>${diaCurto(x.p.ate).toUpperCase()}</b> · ${lkCli(x.d.cid, esc(x.d.cli.nome))}<br><small>${j > 0 ? 'faltam ' + j + ' dia' + (j === 1 ? '' : 's') : j === 0 ? 'é hoje' : 'passou há ' + (-j) + ' dia' + (j === -1 ? '' : 's')}${x.p.txt ? ' · "' + esc(x.p.txt) + '"' : ''}</small></span><span class="agv">${v2(x.p.valor || x.d.total)}<button class="bt" data-agrec="${x.d.cid}">RECEBI</button><button class="bt" data-agtira="${x.d.cid}" title="cancelar o agendamento">✕</button></span></div>`; }).join('')}
       <div class="miuda">Até o dia, o COBRAR TODOS não cobra. O app põe a etiqueta "Agendado pagamento" no WhatsApp e tira no dia; depois dele, entra no COBRAR TODOS.</div></div>`
       : '<div class="vazio-esp">Ninguém agendou pagamento.<br>Quando o cliente escrever "pago dia 20", ele aparece aqui.</div>');
   $$('#agend [data-agrec]').forEach(b => b.onclick = () => receber(b.dataset.agrec));
@@ -720,7 +720,7 @@ function pintaEspeto(){
       && (!filtro || d.cli.nome.toLowerCase().includes(filtro) || (dig.length>=3 && String(d.cli.tel||'').includes(dig))))
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
-   + (() => { const na = usuario ? semAgradecer().length : 0, nq = filaAgr().length; return na ? `<button class="bt cheio cttopo" id="agrTodos" style="background:var(--verde);border-color:var(--verde)">AGRADECER TODOS · ${na}</button>` : nq ? `<div class="etsinc dif">Agradecimentos na fila: ${nq} (1 a cada 3 min, app aberto no PC)</div>` : ''; })()
+   + (() => { const nq = filaAgr().length; return nq ? `<div class="etsinc dif">Agradecimentos na fila: ${nq} (1 a cada 3 min, app aberto no PC)</div>` : ''; })()
    + (() => { const ft = filaTodos(); return CT ? `<button class="bt cheio cttopo" id="cobTodos">${esc(resumoTodos().txt)} ›</button>` : ft.length ? `<button class="bt cheio cttopo" id="cobTodos">COBRAR TODOS · ${ft.length} · ${R(ft.reduce((s,d)=>s+d.total,0))}</button>` : ''; })()
    + pintaSinc() + pintaComprov() + (ds.length ? `<div class="elista"><div class="elin eth"><span>NOME</span><span>COBRANÇA</span><span>DIAS</span><span>VALOR</span><span></span><span></span></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d), lig = et && et.n>=3, pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid];
       const [ct, cc] = lig ? ['LIGAR','lig'] : et ? [et.n + 'ª', 'c' + et.n] : ['—', ''];
@@ -733,7 +733,6 @@ function pintaEspeto(){
     if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
   $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
   const ctb = $('#cobTodos'); if(ctb) ctb.onclick = cobrarTodos;
-  const atb = $('#agrTodos'); if(atb) atb.onclick = telaAgradecer;
   $$('#espeto [data-pend]').forEach(b=>b.onclick=()=>anotaPend(b.dataset.pend));
   const cf0 = $('#confere'); if(cf0) cf0.onclick = confere;
   const pa = $('#pendAbre'); if(pa) pa.onclick = () => { pendAberto = !pendAberto; pintaEspeto(); };
@@ -744,8 +743,11 @@ function pintaEspeto(){
 }
 $('#espbusca').oninput = pintaEspeto;
 // toque no nome/número (lista "pendente sem valor" e CONFERIR) = abre a conversa da pessoa, pra ver o caso dela
-document.addEventListener('click', e => { const a = e.target.closest('[data-vc],[data-vcc]'); if(!a) return; e.preventDefault();
+const lkCli = (cid, txt) => `<a href="#" class="vc" data-vcc="${esc(cid)}">${txt}</a>`;   // PADRÃO (pedido dele 26/11): todo nome/número de lista é link pra conversa da pessoa
+const lkTel = (tel, txt) => `<a href="#" class="vc" data-vct="${esc(tel)}">${txt}</a>`;
+document.addEventListener('click', e => { const a = e.target.closest('[data-vc],[data-vcc],[data-vct]'); if(!a) return; e.preventDefault();
   const dlg = $('#dlg'); if(dlg.open) dlg.close();
+  if(a.dataset.vct){ const c = conversas().find(x => x.tel && chaveTel(x.tel) === chaveTel(a.dataset.vct)); return c ? telaConversa(c.k) : toast('ainda não tenho a conversa desse número'); }
   if(a.dataset.vcc){ if(ponteZap() && sb && usuario) COBRA = {cid:a.dataset.vcc, fila:false}; return abreCobranca(a.dataset.vcc); }
   telaConversa(a.dataset.vc); });
 // ===== Etiqueta "pendente" no WhatsApp e o app não sabe o valor → lista no Espeto; ELE diz quanto (o app nunca inventa valor) =====
@@ -978,15 +980,17 @@ async function agradGota(){
   AGR.rodando = false; leZapRoda();
 }
 setInterval(agradGota, TESTE ? 500 : 15000);
+const AG_DESM = new Set();   // quem ele desmarcou: continua desmarcado se ele abrir a conversa e voltar
 function telaAgradecer(){
-  const ls = semAgradecer(), dlg = $('#dlg');
+  const ls = semAgradecer(), dlg = $('#dlg'), idDe = x => x.ok ? 'o' + x.m.id : 'p' + x.p.id;
   if(!ls.length){ irPara(3); return toast('todos os pagamentos do mês já foram agradecidos'); }
   dlg.innerHTML = `<h3>Agradecer os que faltam · ${ls.length}</h3>
     <div class="peq">Quem pagou este mês e ainda não foi agradecido (pagamentos do app + conversas com a etiqueta <b>ok</b> que mandaram comprovante). O app manda "Recebi, Nome! Obrigado 🙏" e salva o contato como <b>Nome + cidade + CLIENTE</b>. Sai devagar (o WhatsApp do PC limita o ritmo). Depois abre o COBRAR TODOS.</div>
-    <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" checked><label for="ag${i}">${x.ok ? `<b>${esc(x.c.titulo)}</b> · mandou comprovante em ${dataBR(x.m.data)} (etiqueta ok)` : `<b>${esc(x.cl.nome)}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}`}</label></div>`).join('')}</div>
+    <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" ${AG_DESM.has(idDe(x)) ? '' : 'checked'}><label for="ag${i}">${x.ok ? `<b>${lkTel(x.c.tel, esc(x.c.titulo))}</b> · mandou comprovante em ${dataBR(x.m.data)} (etiqueta ok)` : `<b>${lkCli(x.p.cli, esc(x.cl.nome))}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}`}</label></div>`).join('')}</div>
     <div class="peq ctmsg">Cada um recebe assim: <i>"Recebi, Nome! Muito obrigado pelo pagamento 🙏"</i> (quem pagou pelo app leva o valor)</div>
     <div class="linha"><button class="bt" id="agx">DEPOIS</button><button class="bt cheio" id="ags">AGRADECER MARCADOS</button></div>`;
   $('#agx').onclick = () => dlg.close();
+  $$('#dlg [data-ag]').forEach(b => b.onchange = () => { const k = idDe(ls[+b.dataset.ag]); b.checked ? AG_DESM.delete(k) : AG_DESM.add(k); });
   $('#ags').onclick = () => { const b0 = $('#ags'); if(!b0._arm){ b0._arm = 1; b0.textContent = 'TOQUE DE NOVO PRA AGRADECER'; setTimeout(() => { if(b0.isConnected){ b0._arm = 0; b0.textContent = 'AGRADECER MARCADOS'; } }, 4000); return; }
     if(!(EXT || TESTE)) return toast('agradecer: só no PC com o WhatsApp Web aberto');
     const sim = [...$$('#dlg [data-ag]')].filter(b => b.checked).map(b => ls[+b.dataset.ag]); dlg.close();
@@ -998,7 +1002,7 @@ function pintaReceb(){
   const el = $('#receb'); if(!el) return;
   const hj = new Date(new Date().setHours(0,0,0,0)), seg = new Date(hj); seg.setDate(hj.getDate() - (hj.getDay() + 6) % 7);
   const s = recebidoDesde(seg), m = recebidoDesde(new Date(hj.getFullYear(), hj.getMonth(), 1));
-  const nome = cid => esc((cliPor(cid) || {}).nome || '?');
+  const nome = cid => lkCli(cid, esc((cliPor(cid) || {}).nome || '?'));
   const blocoForma = r => ['pix','dinheiro','cartao'].filter(f => r.forma[f]).map(f => `<div class="l" style="color:#8a8a8a"><span>· ${NOME_F[f]}</span><span>${v2(r.forma[f])}</span></div>`).join('')
     + `<div class="l" style="color:#8a8a8a"><span>· FIADO RECEBIDO</span><span>${v2(r.fiado)}</span></div>`;
   // o que entrou na semana: fiado pago um por um; venda na hora junta por dia
@@ -1020,7 +1024,7 @@ function pintaReceb(){
     ${blocoForma(m)}
     <hr><div class="c">PAGAMENTOS DE FIADO NO MÊS · ${m.pg.length}</div>
     ${m.pg.length ? m.pg.slice().sort((a, b) => a.data < b.data ? 1 : -1).map(p => `<div class="l"><span>${dataBR(p.data)} · ${nome(p.cli)} ${(D.cfg.agradeceu || {})[p.id] ? '· ✓ agradecido' : ''}</span><span>${v2(p.valor)}</span></div>`).join('') : '<div class="miuda">Nenhum fiado pago no mês.</div>'}
-    ${usuario && semAgradecer().length ? `<button class="bt cheio" id="agFalta" style="width:100%;margin-top:8px">AGRADECER OS QUE FALTAM · ${semAgradecer().length}</button>` : ''}
+    ${usuario && semAgradecer().length ? `<button class="bt cheio" id="agFalta" style="width:100%;margin-top:8px;background:var(--verde);border-color:var(--verde);color:#fff">AGRADECER OS QUE FALTAM · ${semAgradecer().length}</button>` : ''}
     ${filaAgr().length ? `<div class="miuda">Agradecimentos na fila: <b>${filaAgr().length}</b> (1 a cada 3 min, com o app aberto no PC · faltam uns ${Math.ceil(filaAgr().length * 3 / 60)} h)</div>` : ''}
     <hr><div class="c">O QUE ENTROU NA SEMANA</div>
     ${entrou.length ? entrou.map(x => `<div class="l"><span>${diaCurto(x.data)} · ${x.txt}</span><span>${v2(x.v)}</span></div>`).join('') : '<div class="miuda">Nada ainda esta semana.</div>'}
@@ -1791,7 +1795,7 @@ function pintaComprov(){   // o que aconteceu com cada comprovante dos últimos 
   const lim = Date.now() - 3 * 864e5, ocr = D.cfg.ocr || {};
   const ms = Object.values(MSG.m).filter(x => (x.tipo === 'image' || x.tipo === 'document') && x.lado === 'recebida' && Date.parse(x.data) > lim && cliDaMsg(x) && (deve(cliDaMsg(x)) > 0.004 || ocr[x.id])).sort((a, b) => a.data < b.data ? 1 : -1).slice(0, 5);
   if(!ms.length) return '';
-  const lin = ms.map(x => { const cid = cliDaMsg(x), nome = esc(cliPor(cid).nome), o = ocr[x.id]; let t;
+  const lin = ms.map(x => { const cid = cliDaMsg(x), nome = lkCli(cid, esc(cliPor(cid).nome)), o = ocr[x.id]; let t;
     if(o) t = o.ok ? 'lido: <b>' + R(o.valor) + '</b> · data e recebedor ✓ · ' + (deve(cid) > 0.004 ? 'dando baixa…' : 'baixa dada ✓') : 'leu ' + (o.valor ? R(o.valor) : 'nenhum valor') + ' · data ' + (o.dataOk ? '✓' : '✗') + ' · recebedor ' + (o.recOk ? '✓' : '✗') + ' → <b>te pergunto no sino</b> (não vou baixar sozinho)';
     else if(!D.cfg.recebedor) t = '<b>falta o nome do recebedor em ☰ &gt; Dados</b> (sem ele eu não leio)';
     else if(!(EXT || TESTE)) t = 'só o PC (com o WhatsApp Web) lê; abra o app no PC';
@@ -1806,7 +1810,7 @@ function leTela(){
   if(!ps.length){ if(dlg.open) dlg.close(); return toast('nada novo nas conversas'); }
   dlg.innerHTML = `<h3>O app leu as conversas · ${ps.length}</h3>
     <div class="peq">Marque o que está certo. O <b>(confira)</b> vem desmarcado. Mudar no WhatsApp (ok, arquivar, contato) só no PC; o resto vale já.</div>
-    <div class="lelista">${ps.map((p, i) => `<div class="lel"><input type="checkbox" id="le${i}" data-li="${i}" ${p.forca === 'forte' ? 'checked' : ''}><label for="le${i}"><b>${esc(p.quem)}</b>${p.forca === 'media' ? ' <small class="conf">(confira)</small>' : ''}<br>${leRotulo(p)}${p.m && p.m.texto ? `<br><i>"${esc(p.m.texto.slice(0, 90))}"</i> <small>${dataBR(p.m.data)}</small>` : ''}</label></div>`).join('')}</div>
+    <div class="lelista">${ps.map((p, i) => `<div class="lel"><input type="checkbox" id="le${i}" data-li="${i}" ${p.forca === 'forte' ? 'checked' : ''}><label for="le${i}"><b>${p.cid ? lkCli(p.cid, esc(p.quem)) : lkTel(p.tel, esc(p.quem))}</b>${p.forca === 'media' ? ' <small class="conf">(confira)</small>' : ''}<br>${leRotulo(p)}${p.m && p.m.texto ? `<br><i>"${esc(p.m.texto.slice(0, 90))}"</i> <small>${dataBR(p.m.data)}</small>` : ''}</label></div>`).join('')}</div>
     <div class="lel lauto"><input type="checkbox" id="leAuto" ${D.cfg.leAuto !== false ? 'checked' : ''}><label for="leAuto">Daqui pra frente, <b>fazer sozinho</b> o que for certeiro. O "(confira)" sempre pergunta, e o valor do "pagou" continua no sino pra você CONFIRMAR.</label></div>
     <div class="linha"><button class="bt" id="lex">DEPOIS</button><button class="bt cheio" id="les">APROVAR MARCADOS</button></div>
     <p class="peq">Desmarcado = o app esquece essa leitura. Não pagou nem prometeu = continua com o pendente e entra no COBRAR TODOS.</p>`;
