@@ -1801,6 +1801,17 @@ function leAplica(ps){
 }
 // ===== PIX AUTOMÁTICO (Mercado Pago): o webhook (Edge Function pix-webhook) grava o pagamento "pix-<order>" na nuvem; aqui o app termina o serviço:
 // tira a promessa, fecha o sino, e (se quitou tudo) põe a etiqueta ok + arquiva a conversa pela fila leZap. Cada pagamento pix-… só 1 vez (D.cfg.pixFeito).
+// CURA: o registro diz que o pagamento foi dado (okPend fim='pago') mas o pagamento sumiu da lista → recria com o mesmo id (nunca duplica) e anota em D.cfg.curaLog pra investigar (26/11: caso do Pedro)
+function curaPagamentos(){
+  if(!usuario) return;
+  const ok = D.cfg.okPend || {}; let n = 0;
+  for(const cid in ok){ const p = ok[cid]; if(p.fim !== 'pago' || !p.desde || !D.clientes.some(c => c.id === cid)) continue;
+    const pid = 'ok-' + cid + '-' + Date.parse(p.desde); if(D.pagamentos.some(x => x.id === pid)) continue;
+    const v = p.dito > 0.004 ? Math.min(p.dito, p.valor) : p.valor; if(!(v > 0)) continue;
+    D.pagamentos.push({id:pid, data:p.desde, cli:cid, valor:v, forma:'pix'}); n++;
+    D.cfg.curaLog = [...(D.cfg.curaLog || []).slice(-9), {pid, em:hoje()}]; }
+  if(n){ D.pagamentos.sort((a, b) => a.data < b.data ? -1 : 1); salvar(); }
+}
 function pixBaixa(){
   if(!usuario) return;
   const feito = D.cfg.pixFeito || {}, novos = D.pagamentos.filter(p => /^pix-/.test(p.id) && !feito[p.id]); if(!novos.length) return;
@@ -2720,7 +2731,7 @@ function pendentes(s = lerSinc()){
   return p;
 }
 // nuvem + campos que mudaram aqui; listas de datas (cobrados, etapas, áudios) juntam cliente a cliente
-const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos', 'msgsOcultas', 'agradeceu', 'ocr'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
+const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos', 'msgsOcultas', 'agradeceu', 'ocr', 'curaLog'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
 function juntaCfg(nuvem, aqui, campos){
   const r = Object.assign({}, nuvem);
   (campos || []).forEach(k => { r[k] = CFG_MAPA.includes(k) && aqui[k] && typeof aqui[k] === 'object' ? Object.assign({}, nuvem[k] || {}, aqui[k]) : aqui[k]; });
@@ -2872,7 +2883,7 @@ async function iniciarNuvem(){
 // ===== Começo =====
 $('#qr').innerHTML=[1,1,1,0,1,0,1,1,1,1,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,0,1,1,1,1,0,0,1,0,1,0,1,0,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1].map(v=>`<i class="${v?'':'v'}"></i>`).join('');
 $('#data').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','').toUpperCase();
-function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaAgend(); pintaMes(); etqAuto(); okAuto(); leAuto(); acompVolta(); pixBaixa(); converge(); ocrRoda(); leZapRoda(); }
+function tudo(){ pintaAvisos(); pintaTags(); desenha(); pintaEspeto(); pintaAgend(); pintaMes(); etqAuto(); okAuto(); leAuto(); acompVolta(); curaPagamentos(); pixBaixa(); converge(); ocrRoda(); leZapRoda(); }
 // Modo teste: 12 clientes + ~200 mensagens de exemplo; ENVIAR finge que mandou (3 em 3 falha, pra ver o "!").
 function carregaTeste(){
   const nomes = ['Ana Souza','Bruno Lima','Carla Mendes','Diego Rocha','Elaine Costa','Fábio Nunes','Gabi Torres','Hugo Prado','Íris Melo','João Pedro','Kátia Reis','Lucas Dias'];
