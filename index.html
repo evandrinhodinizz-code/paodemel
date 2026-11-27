@@ -721,7 +721,7 @@ function pintaEspeto(){
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
    + (() => { const ft = filaTodos(); return CT ? `<button class="bt cheio cttopo" id="cobTodos">${esc(resumoTodos().txt)} ›</button>` : ft.length ? `<button class="bt cheio cttopo" id="cobTodos">COBRAR TODOS · ${ft.length} · ${R(ft.reduce((s,d)=>s+d.total,0))}</button>` : ''; })()
-   + pintaSinc() + (ds.length ? `<div class="elista"><div class="elin eth"><span>NOME</span><span>COBRANÇA</span><span>DIAS</span><span>VALOR</span><span></span><span></span></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d), lig = et && et.n>=3, pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid];
+   + pintaSinc() + pintaComprov() + (ds.length ? `<div class="elista"><div class="elin eth"><span>NOME</span><span>COBRANÇA</span><span>DIAS</span><span>VALOR</span><span></span><span></span></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d), lig = et && et.n>=3, pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid];
       const [ct, cc] = lig ? ['LIGAR','lig'] : et ? [et.n + 'ª', 'c' + et.n] : ['—', ''];
       return `<div class="eit${ABERTAS_ESP.has(d.cid) ? ' on' : ''}" data-nota="${d.cid}"><div class="elin el"><div class="enm">${esc(d.cli.nome)}<small>${esc(d.cli.tel ? telBonito(d.cli.tel) : 'sem WhatsApp')}${pm ? ' · promete ' + dataBR(pm.ate) : ''}</small></div><span class="ech ${cc}">${ct}</span><span class="eds${n>30?' risc':n>7?' ve':''}">${n}d</span><span class="evl">${v2(d.total)}</span><button class="eic" data-edita="${d.cid}" aria-label="editar">${ICO.lapis}</button><button class="eic" data-apaga="${d.cid}" aria-label="apagar">${ICO.lixo}</button></div>
       <div class="eext">${pm ? '<div class="prom">PROMETEU PAGAR ' + dataBR(pm.ate) + ' · só cobra depois</div>' : ''}${pa && D.cfg.pixAuto ? '<div class="prom">PIX ABERTO ' + R(pa.valor) + ' · enviado ' + dataBR(pa.em) + ' · baixa sozinha quando pagar</div>' : ''}<div class="acoes">${lig && d.cli.tel ? `<a class="bt-ligar" href="tel:${telLigar(d.cli.tel)}">LIGAR</a>` : ''}<button class="zap" data-cobrar="${d.cid}">${et ? (et.n>=3 ? 'COBRAR' : 'COBRAR ' + (et.n+1) + 'ª') : 'COBRAR'}</button><button data-receber="${d.cid}">RECEBI</button><button data-conv="${d.cid}">CONVERSA</button></div><small class="edesde">desde ${dataBR(d.maisAntiga)}${D.cfg.cobrados[d.cid]?` · cobrado há ${dias(D.cfg.cobrados[d.cid])}d`:''} · ${d.qtd} un</small></div></div>`; }).join('')}</div>`
@@ -1665,6 +1665,7 @@ function leRotulo(p){
   return `cidade: <b>${esc(p.cidade)}</b>${p.agenda ? ' · vai junto no contato' : ''}`;
 }
 // ===== OCR DO COMPROVANTE (pedido dele 26/11): lê a foto no PC (Tesseract, grátis, a foto não sai daqui) e só dá baixa sozinho se bater VALOR + DATA (até 3 dias) + RECEBEDOR (nome em ☰ > Dados) =====
+const cliDaMsg = x => x.cli || ((D.clientes.find(c => c.tel && x.tel && chaveTel(c.tel) === chaveTel(x.tel)) || {}).id || null);   // mensagem sem cliente ligado: acha pelo número
 const OCR = {rodando:false, lib:null, pausa:0};
 function carregaTesseract(){
   return OCR.lib ||= new Promise((ok, ruim) => { if(window.Tesseract) return ok(window.Tesseract);
@@ -1707,15 +1708,30 @@ async function urlMidia(m){
 async function ocrRoda(){   // 1 foto por vez, só no PC, só de quem deve e mandou nos últimos 3 dias; resultado fica em D.cfg.ocr (vale em todos os aparelhos)
   if(OCR.rodando || Date.now() < OCR.pausa || !usuario || !sb || !(EXT || TESTE) || !D.cfg.recebedor) return;
   const jaLi = D.cfg.ocr || {}, lim = Date.now() - 3 * 864e5;
-  const m = Object.values(MSG.m).find(x => (x.tipo === 'image' || (x.tipo === 'document' && ehPdf(x))) && x.lado === 'recebida' && x.midia && x.midia.path && !jaLi[x.id] && Date.parse(x.data) > lim && x.cli && deve(x.cli) > 0.004);
+  const m = Object.values(MSG.m).find(x => (x.tipo === 'image' || (x.tipo === 'document' && ehPdf(x))) && x.lado === 'recebida' && x.midia && x.midia.path && !jaLi[x.id] && Date.parse(x.data) > lim && cliDaMsg(x) && deve(cliDaMsg(x)) > 0.004);
   if(!m) return;
   OCR.rodando = true;
   try{
     const url = await urlMidia(m);
     const texto = m.tipo === 'document' ? await textoDoPdf(url) : ((await (await carregaTesseract()).recognize(url, 'por')).data.text || '');
     D.cfg.ocr = {...(D.cfg.ocr || {}), [m.id]: leComprovante(texto)};
-  }catch(e){ console.warn('OCR:', e.message); OCR.pausa = Date.now() + 5 * 60000; OCR.rodando = false; return; }
-  OCR.rodando = false; LE_CACHE.t = 0; salvar(); tudo();
+  }catch(e){ console.warn('OCR:', e.message); OCR.erro = e.message; OCR.pausa = Date.now() + 5 * 60000; OCR.rodando = false; pintaEspeto(); return; }
+  OCR.rodando = false; OCR.erro = ''; LE_CACHE.t = 0; salvar(); tudo();
+}
+function pintaComprov(){   // o que aconteceu com cada comprovante dos últimos 3 dias (pra ele ver por que baixou ou não)
+  if(!usuario) return '';
+  const lim = Date.now() - 3 * 864e5, ocr = D.cfg.ocr || {};
+  const ms = Object.values(MSG.m).filter(x => (x.tipo === 'image' || x.tipo === 'document') && x.lado === 'recebida' && Date.parse(x.data) > lim && cliDaMsg(x) && (deve(cliDaMsg(x)) > 0.004 || ocr[x.id])).sort((a, b) => a.data < b.data ? 1 : -1).slice(0, 5);
+  if(!ms.length) return '';
+  const lin = ms.map(x => { const cid = cliDaMsg(x), nome = esc(cliPor(cid).nome), o = ocr[x.id]; let t;
+    if(o) t = o.ok ? 'lido: <b>' + R(o.valor) + '</b> · data e recebedor ✓ · ' + (deve(cid) > 0.004 ? 'dando baixa…' : 'baixa dada ✓') : 'leu ' + (o.valor ? R(o.valor) : 'nenhum valor') + ' · data ' + (o.dataOk ? '✓' : '✗') + ' · recebedor ' + (o.recOk ? '✓' : '✗') + ' → <b>te pergunto no sino</b> (não vou baixar sozinho)';
+    else if(!D.cfg.recebedor) t = '<b>falta o nome do recebedor em ☰ &gt; Dados</b> (sem ele eu não leio)';
+    else if(!(EXT || TESTE)) t = 'só o PC (com o WhatsApp Web) lê; abra o app no PC';
+    else if(!x.midia || !x.midia.path) t = 'o arquivo não foi guardado (chegou antes da atualização): confirme no sino';
+    else if(x.tipo === 'document' && !ehPdf(x)) t = 'arquivo que não é PDF nem foto: confirme no sino';
+    else t = OCR.erro ? 'não consegui ler: ' + esc(OCR.erro) + ' (tento de novo em 5 min)' : OCR.rodando ? 'lendo agora…' : 'na fila pra ler';
+    return nome + ': ' + t; });
+  return '<div class="etsinc dif">Comprovantes: ' + lin.join(' · ') + '</div>';
 }
 function leTela(){
   const ps = leProps(true), dlg = $('#dlg');
