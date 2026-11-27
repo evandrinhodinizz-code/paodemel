@@ -720,6 +720,7 @@ function pintaEspeto(){
       && (!filtro || d.cli.nome.toLowerCase().includes(filtro) || (dig.length>=3 && String(d.cli.tel||'').includes(dig))))
     .sort((a,b)=> velhos ? (a.maisAntiga<b.maisAntiga?-1:1) : (a.maisAntiga<b.maisAntiga?1:-1));
   $('#espeto').innerHTML = `<div class="cab"><small>NO ESPETO · ${todos.length} NOTA${todos.length===1?'':'S'}${ds.length!==todos.length?` · MOSTRANDO ${ds.length} (${R(ds.reduce((s,d)=>s+d.total,0))})`:''}</small><b>${R(total)}</b></div>`
+   + (() => { const na = usuario ? semAgradecer().length : 0, nq = filaAgr().length; return na ? `<button class="bt cheio cttopo" id="agrTodos" style="background:var(--verde);border-color:var(--verde)">AGRADECER TODOS · ${na}</button>` : nq ? `<div class="etsinc dif">Agradecimentos na fila: ${nq} (1 a cada 3 min, app aberto no PC)</div>` : ''; })()
    + (() => { const ft = filaTodos(); return CT ? `<button class="bt cheio cttopo" id="cobTodos">${esc(resumoTodos().txt)} ›</button>` : ft.length ? `<button class="bt cheio cttopo" id="cobTodos">COBRAR TODOS · ${ft.length} · ${R(ft.reduce((s,d)=>s+d.total,0))}</button>` : ''; })()
    + pintaSinc() + pintaComprov() + (ds.length ? `<div class="elista"><div class="elin eth"><span>NOME</span><span>COBRANÇA</span><span>DIAS</span><span>VALOR</span><span></span><span></span></div>${ds.map(d=>{ const n=dias(d.maisAntiga), et=etapaDe(d.cid, d), lig = et && et.n>=3, pm = prometeu(d.cid, d), pa = (D.cfg.pixAbertos || {})[d.cid];
       const [ct, cc] = lig ? ['LIGAR','lig'] : et ? [et.n + 'ª', 'c' + et.n] : ['—', ''];
@@ -732,6 +733,7 @@ function pintaEspeto(){
     if(abertas.length === 1) apagarVenda(abertas[0].v.id, cid); else notasDo(cid); });   // várias: escolhe na lista (nunca apaga tudo num toque)
   $$('#espeto [data-cobrar]').forEach(b=>b.onclick=()=>cobrar(b.dataset.cobrar));
   const ctb = $('#cobTodos'); if(ctb) ctb.onclick = cobrarTodos;
+  const atb = $('#agrTodos'); if(atb) atb.onclick = telaAgradecer;
   $$('#espeto [data-pend]').forEach(b=>b.onclick=()=>anotaPend(b.dataset.pend));
   const cf0 = $('#confere'); if(cf0) cf0.onclick = confere;
   const pa = $('#pendAbre'); if(pa) pa.onclick = () => { pendAberto = !pendAberto; pintaEspeto(); };
@@ -941,7 +943,7 @@ function semAgradecer(){
   const ini = new Date(new Date().getFullYear(), new Date().getMonth(), 1), ag = D.cfg.agradeceu || {}, cv = conversas();
   const okE = Object.values(ZC.etq).find(ehOk), dev = new Set(devedores().map(d => d.cid)), extra = [];
   if(okE) cv.forEach(c => { if(!c.tel || ehLoja(c.tel) || !c.etqs.some(ehOk) || (c.cli && dev.has(c.cli))) return;
-    const mm = c.msgs.filter(m => m.lado === 'recebida' && (m.tipo === 'image' || m.tipo === 'document') && new Date(m.data) >= ini && !ag['ok:' + m.id]).pop(); if(!mm) return;
+    const mm = c.msgs.filter(m => m.lado === 'recebida' && (m.tipo === 'image' || m.tipo === 'document' || /^\[(foto|arquivo)\]/.test(m.texto || '')) && new Date(m.data) >= ini && !ag['ok:' + m.id]).pop(); if(!mm) return;
     if(c.msgs.some(m => m.lado === 'enviada' && m.data > mm.data && LE_OBRIG.test(m.texto || ''))) return;   // ele já agradeceu depois do comprovante
     extra.push({ok:true, c, m:mm}); });
   const pg = D.pagamentos.filter(p => new Date(p.data) >= ini && !ag[p.id]).map(p => {
@@ -950,7 +952,7 @@ function semAgradecer(){
     if(c && c.msgs.some(m => m.lado === 'enviada' && m.data > p.data.slice(0, 10) && LE_OBRIG.test(m.texto || ''))) return null;   // ele já agradeceu na conversa
     return {p, cl};
   }).filter(Boolean);
-  return [...pg, ...extra.slice(0, 60)];
+  return [...pg, ...extra.slice(0, 200)];
 }
 // agradece quem está com a etiqueta ok e mandou comprovante (sem valor no app): "Recebi, Nome! Obrigado" + contato Nome + cidade + CLIENTE
 function agradeceOk(x){
@@ -958,21 +960,38 @@ function agradeceOk(x){
   const z = x.c.z, cl = x.c.cli ? cliPor(x.c.cli) : null;
   const nome = z && z.nome ? z.nome : cl && !pareceTel(cl.nome) ? cl.nome : (z && limpaPush(z.push)) || '';
   const bom = nome && !pareceTel(nome), prim = bom ? nome.split(' ')[0] : '';
-  filaTexto(x.c.tel, x.c.cli || null, 'Recebi' + (prim ? ', ' + prim : '') + '! Muito obrigado pelo pagamento 🙏').catch(e => console.warn('agradecer ok:', e.message));
-  if(bom && !(z && z.nome)){ const zap = {...(cf.leZap || {})}, k = z ? z.tel : String(x.c.tel).replace(/\D/g, ''); zap[k] = {...(zap[k] || {}), nome, sobre:(x.c.cli ? sobreContato(x.c.cli) : cidadeVenda() + ' CLIENTE'), ...(z ? {} : {fora:1})}; cf.leZap = zap; }
+  const sobre = x.c.cli ? sobreContato(x.c.cli) : cidadeVenda() + ' CLIENTE';
+  filaAgr([...filaAgr(), {tel:x.c.tel, cli:x.c.cli || null, texto:'Recebi' + (prim ? ', ' + prim : '') + '! Muito obrigado pelo pagamento 🙏', nome:bom && !(z && z.nome) ? nome : '', sobre, fora:!z}]);
 }
+// fila de agradecimentos DESTE PC (não sobe pra nuvem: 2 abas não podem mandar em dobro). Sai 1 a cada 3 min (limite do WhatsApp do PC: ~20/h, 80/dia); o que passa de 2 h na fila de envio é descartado
+const K_AGR = 'paodemel_agradfila', AGR = {ult:0};
+function filaAgr(nova){ if(nova){ try{ localStorage.setItem(K_AGR, JSON.stringify(nova)); }catch(e){} return nova; } try{ return JSON.parse(localStorage.getItem(K_AGR)) || []; }catch(e){ return []; } }
+async function agradGota(){
+  const q = filaAgr(); if(!q.length || !usuario || !sb || !(EXT || TESTE) || AGR.rodando) return;
+  if(Date.now() - AGR.ult < (TESTE ? 400 : 180000)) return;
+  if(!TESTE && Object.values(MSG.m).filter(m => m.entrega === 'fila').length >= 3) return;   // o WhatsApp do PC ainda não escoou a fila
+  AGR.rodando = true; AGR.ult = Date.now(); const it = q[0]; filaAgr(q.slice(1)); if(!q.slice(1).length) localStorage.setItem(K_AGR, '[]');
+  try{
+    await filaTexto(it.tel, it.cli, it.texto);
+    if(it.nome){ const zap = {...(D.cfg.leZap || {})}, k = String(it.tel).replace(/\D/g, ''), z = Object.values(ZC.conv).find(x => chaveTel(x.tel) === chaveTel(it.tel)), kk = z ? z.tel : k; zap[kk] = {...(zap[kk] || {}), nome:it.nome, sobre:it.sobre, ...(z ? {} : {fora:1})}; D.cfg.leZap = zap; salvar(); }
+  }catch(e){ console.warn('agradecer (fila):', e.message); if(!it.tent) filaAgr([...filaAgr(), {...it, tent:1}]); }
+  AGR.rodando = false; leZapRoda();
+}
+setInterval(agradGota, TESTE ? 500 : 15000);
 function telaAgradecer(){
   const ls = semAgradecer(), dlg = $('#dlg');
   if(!ls.length){ irPara(3); return toast('todos os pagamentos do mês já foram agradecidos'); }
   dlg.innerHTML = `<h3>Agradecer os que faltam · ${ls.length}</h3>
     <div class="peq">Quem pagou este mês e ainda não foi agradecido (pagamentos do app + conversas com a etiqueta <b>ok</b> que mandaram comprovante). O app manda "Recebi, Nome! Obrigado 🙏" e salva o contato como <b>Nome + cidade + CLIENTE</b>. Sai devagar (o WhatsApp do PC limita o ritmo). Depois abre o COBRAR TODOS.</div>
     <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" checked><label for="ag${i}">${x.ok ? `<b>${esc(x.c.titulo)}</b> · mandou comprovante em ${dataBR(x.m.data)} (etiqueta ok)` : `<b>${esc(x.cl.nome)}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}`}</label></div>`).join('')}</div>
+    <div class="peq ctmsg">Cada um recebe assim: <i>"Recebi, Nome! Muito obrigado pelo pagamento 🙏"</i> (quem pagou pelo app leva o valor)</div>
     <div class="linha"><button class="bt" id="agx">DEPOIS</button><button class="bt cheio" id="ags">AGRADECER MARCADOS</button></div>`;
   $('#agx').onclick = () => dlg.close();
-  $('#ags').onclick = () => { if(!(EXT || TESTE)) return toast('agradecer: só no PC com o WhatsApp Web aberto');
+  $('#ags').onclick = () => { const b0 = $('#ags'); if(!b0._arm){ b0._arm = 1; b0.textContent = 'TOQUE DE NOVO PRA AGRADECER'; setTimeout(() => { if(b0.isConnected){ b0._arm = 0; b0.textContent = 'AGRADECER MARCADOS'; } }, 4000); return; }
+    if(!(EXT || TESTE)) return toast('agradecer: só no PC com o WhatsApp Web aberto');
     const sim = [...$$('#dlg [data-ag]')].filter(b => b.checked).map(b => ls[+b.dataset.ag]); dlg.close();
     sim.forEach(x => x.ok ? agradeceOk(x) : agradece(x.p.cli, x.p.valor, x.p.id)); salvar(); tudo(); toast(sim.length + ' agradecimento' + (sim.length === 1 ? '' : 's') + ' na fila · contatos salvos');
-    if(filaTodos().length) setTimeout(cobrarTodos, 700); else irPara(3); };   // em seguida: COBRAR TODOS (1ª cobrança) pra quem está no Espeto
+    const nq = filaAgr().length; if(nq > 15) toast(nq + ' agradecimentos na fila: saem 1 a cada 3 min com o app aberto no PC. O COBRAR TODOS você abre depois que acabar.', null); else if(filaTodos().length) setTimeout(cobrarTodos, 700); else irPara(3); };   // em seguida: COBRAR TODOS (1ª cobrança) pra quem está no Espeto
   dlg.showModal();
 }
 function pintaReceb(){
@@ -1002,6 +1021,7 @@ function pintaReceb(){
     <hr><div class="c">PAGAMENTOS DE FIADO NO MÊS · ${m.pg.length}</div>
     ${m.pg.length ? m.pg.slice().sort((a, b) => a.data < b.data ? 1 : -1).map(p => `<div class="l"><span>${dataBR(p.data)} · ${nome(p.cli)} ${(D.cfg.agradeceu || {})[p.id] ? '· ✓ agradecido' : ''}</span><span>${v2(p.valor)}</span></div>`).join('') : '<div class="miuda">Nenhum fiado pago no mês.</div>'}
     ${usuario && semAgradecer().length ? `<button class="bt cheio" id="agFalta" style="width:100%;margin-top:8px">AGRADECER OS QUE FALTAM · ${semAgradecer().length}</button>` : ''}
+    ${filaAgr().length ? `<div class="miuda">Agradecimentos na fila: <b>${filaAgr().length}</b> (1 a cada 3 min, com o app aberto no PC · faltam uns ${Math.ceil(filaAgr().length * 3 / 60)} h)</div>` : ''}
     <hr><div class="c">O QUE ENTROU NA SEMANA</div>
     ${entrou.length ? entrou.map(x => `<div class="l"><span>${diaCurto(x.data)} · ${x.txt}</span><span>${v2(x.v)}</span></div>`).join('') : '<div class="miuda">Nada ainda esta semana.</div>'}
     <hr><div class="c">VAI PAGAR · ${vai.length} · ${R(vaiTot)}</div>
