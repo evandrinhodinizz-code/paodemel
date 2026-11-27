@@ -789,17 +789,40 @@ function pintaPend(){
   const conf = usuario && Object.keys(ZC.conv || {}).length ? '<div class="pendwa"><button class="bt" id="confere">CONFERIR COM AS ETIQUETAS DO WHATSAPP</button></div>' : '';
   const ps = pendSemValor(); if(!ps.length) return conf;
   return `<div class="pendwa"><button class="bt" id="pendAbre">${pendAberto ? '▾' : '▸'} NO WHATSAPP COM PENDENTE, SEM VALOR AQUI · ${ps.length}</button>
-    ${pendAberto ? ps.map(c => { const d = c.z && c.z.ult_data; return `<div class="l pendl"><span><a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a>${d ? ' · última msg há ' + dias(d) + 'd' : ''}${(() => { const pm = prometeu('t' + chaveTel(c.tel)); return pm ? ' · <b>promete ' + dataBR(pm.ate) + '</b>' : ''; })()}</span><button class="bt" data-pend="${esc(c.tel)}">QUANTO?</button></div>`; }).join('')
+    ${pendAberto ? ps.map(c => { const d = c.z && c.z.ult_data; return `<div class="l pendl"><span><a href="#" class="vc" data-vc="${esc(c.k)}">${esc(c.titulo)}</a>${d ? ' · última msg há ' + dias(d) + 'd' : ''}${(() => { const pm = prometeu('t' + chaveTel(c.tel)); return pm ? ' · <b>promete ' + dataBR(pm.ate) + '</b>' : ''; })()}${(() => { const f = fiadoDaConversa(c); return f ? ' · <b>achei: ' + f.qtd + 'x ' + R(f.valor) + ' (' + dataBR(f.data) + ')</b>' + (f.duvida || f.depois.length ? ' ⚠️' : '') : ''; })()}</span><button class="bt${fiadoDaConversa(c) ? ' cheio' : ''}" data-pend="${esc(c.tel)}">${(() => { const f = fiadoDaConversa(c); return f ? 'PÔR ' + R(f.valor) + '?' : 'QUANTO?'; })()}</button></div>`; }).join('')
       + '<div class="miuda">Toque em QUANTO? e diga o valor: aí entra no Espeto pra cobrar. NÃO DEVE tira da lista.</div>' : ''}</div>` + conf;
+}
+// SOZINHO (27/11, pedido dele): no PC com a extensão, pendente sem valor e sem a mensagem do fiado no app → pede a conversa INTEIRA
+// ao WhatsApp Web (só leitura, extensão 2.9.5+). 1 vez por número (de novo só depois de 7 dias), no máx. 20 por vez.
+function buscaHistPend(){
+  if(TESTE || !EXT || !ponteZap() || !usuario) return;
+  let feitos = {}; try{ feitos = JSON.parse(localStorage.getItem('pdmHistPend') || '{}'); }catch(e){}
+  const tels = pendSemValor().filter(c => !fiadoDaConversa(c) && !(Date.now() - (feitos[chaveTel(c.tel)] || 0) < 7 * 864e5)).map(c => c.tel).slice(0, 20);
+  if(!tels.length) return;
+  tels.forEach(t => feitos[chaveTel(t)] = Date.now()); try{ localStorage.setItem('pdmHistPend', JSON.stringify(feitos)); }catch(e){}
+  praExt({tipo:'lote', acao:'historico', tels, pedido:'histPend' + Date.now()});
+}
+setTimeout(buscaHistPend, 60000); setInterval(buscaHistPend, 5 * 60000);
+// Valor do fiado lido da mensagem que ELE mandou: "Pão de Mel 2x -R$24" (modelo antigo) ou "*1x Pão de Mel - R$12,50*" (novo). Última da conversa.
+// depois = o que o cliente falou de pagamento depois dela (ex.: "te dou os 15 reais"), pra ele decidir.
+function fiadoDaConversa(c){
+  const re1 = /P[ãa]o de Mel\s*(\d+)\s*x[^\n\d]*?R\$\s*(\d+(?:[.,]\d{1,2})?)/i, re2 = /(\d+)\s*x\s*P[ãa]o de Mel[^\n]*?R\$\s*(\d+(?:[.,]\d{1,2})?)/i;
+  const ms = (c.msgs || []).filter(m => m.lado === 'enviada' && (re1.test(m.texto || '') || re2.test(m.texto || '')));
+  const m = ms[ms.length - 1]; if(!m) return null;
+  const r = (m.texto.match(re2) || m.texto.match(re1)), qtd = +r[1], valor = num(r[2]); if(!(valor > 0) || !(qtd > 0)) return null;
+  const depois = c.msgs.filter(x => x.lado === 'recebida' && x.data > m.data && /r\$|\d+\s*reais|pag|pix|dinheiro|mandei|transferi/i.test(x.texto || '')).slice(-2).map(x => (x.texto || '').replace(/\s+/g, ' ').slice(0, 80));
+  return {qtd, valor, data:m.data, trecho:r[0].replace(/\*/g, ''), duvida: valor < qtd * 5, depois};
 }
 function anotaPend(tel){
   const c = pendSemValor().find(x => x.tel === tel); if(!c) return;
   const lim = Date.now() - 48 * 36e5;   // valor sugerido = pedido da conversa nas últimas 48 h ("quero 2" = 25), se tiver
-  const sug = c.msgs.filter(m => m.lado === 'recebida' && m.sugestao && Date.parse(m.data) >= lim).pop();
-  const dt = (c.z && c.z.ult_data) || (c.ult && c.ult.data) || hoje();
+  const fz = fiadoDaConversa(c);   // 27/11: a mensagem de fiado que ELE mandou ("Pão de Mel 2x -R$24") vale mais que o pedido do cliente
+  const sug = fz ? {sugestao:{valor:fz.valor}} : c.msgs.filter(m => m.lado === 'recebida' && m.sugestao && Date.parse(m.data) >= lim).pop();
+  const dt = (fz && fz.data) || (c.z && c.z.ult_data) || (c.ult && c.ult.data) || hoje();
   const dlg = $('#dlg');
   dlg.innerHTML = `<h3>${esc(c.titulo)} ficou pendente</h3>
-    <label>QUANTO DEVE (R$)${sug ? ' · sugestão da conversa' : ''}</label><input id="pv" inputmode="decimal" value="${sug ? v2(sug.sugestao.valor) : ''}" placeholder="ex.: 25">
+    ${fz ? `<div class="peq">Achei na sua mensagem de ${dataBR(fz.data)}: <b>${esc(fz.trecho)}</b>${fz.duvida ? ' · <b style="color:#b3261e">confira: valor baixo, pode ser erro de digitação</b>' : ''}${fz.depois.length ? '<br>Depois o cliente disse: ' + fz.depois.map(t => '“' + esc(t) + '”').join(' · ') : ''}</div>` : ''}
+    <label>QUANTO DEVE (R$)${sug ? (fz ? ' · da sua mensagem do fiado' : ' · sugestão da conversa') : ''}</label><input id="pv" inputmode="decimal" value="${sug ? v2(sug.sugestao.valor) : ''}" placeholder="ex.: 25">
     <label>DESDE QUANDO</label><input id="pd" type="date" value="${diaLocal(dt)}">
     <div class="linha tres"><button class="bt" id="px">VOLTAR</button><button class="bt" id="pn">NÃO DEVE</button><button class="bt cheio" id="ps">PÔR NO ESPETO</button></div>`;
   $('#px').onclick = () => dlg.close();
@@ -810,7 +833,7 @@ function anotaPend(tel){
     if(pendSemValor().every(x => x.tel !== tel)) { dlg.close(); return toast('já está no Espeto'); }   // trava contra 2 toques
     let cl = D.clientes.find(x => x.tel && chaveTel(x.tel) === chaveTel(tel));
     if(!cl){ cl = {id:id(), nome:c.titulo, tel:telLimpo(tel)}; D.clientes.push(cl); }
-    const pr = D.cfg.preco || 12.5, q = Math.max(1, Math.round(v / pr));
+    const pr = D.cfg.preco || 12.5, q = fz && Math.abs(v - fz.valor) < 0.01 ? fz.qtd : Math.max(1, Math.round(v / pr));
     const d = $('#pd').value ? new Date($('#pd').value + 'T12:00').toISOString() : hoje();
     const vd = {id:id(), data:d, cli:cl.id, qtd:q, preco:v / q, forma:'fiado'};
     D.vendas.push(vd); salvar(); dlg.close(); tudo();
