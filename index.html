@@ -939,24 +939,40 @@ function recebidoDesde(ini){
 const LE_OBRIG = /obrigad|valeu|agradec|brigad|🙏|❤|😘|😊/i;
 function semAgradecer(){
   const ini = new Date(new Date().getFullYear(), new Date().getMonth(), 1), ag = D.cfg.agradeceu || {}, cv = conversas();
-  return D.pagamentos.filter(p => new Date(p.data) >= ini && !ag[p.id]).map(p => {
+  const okE = Object.values(ZC.etq).find(ehOk), dev = new Set(devedores().map(d => d.cid)), extra = [];
+  if(okE) cv.forEach(c => { if(!c.tel || ehLoja(c.tel) || !c.etqs.some(ehOk) || (c.cli && dev.has(c.cli))) return;
+    const mm = c.msgs.filter(m => m.lado === 'recebida' && (m.tipo === 'image' || m.tipo === 'document') && new Date(m.data) >= ini && !ag['ok:' + m.id]).pop(); if(!mm) return;
+    if(c.msgs.some(m => m.lado === 'enviada' && m.data > mm.data && LE_OBRIG.test(m.texto || ''))) return;   // ele já agradeceu depois do comprovante
+    extra.push({ok:true, c, m:mm}); });
+  const pg = D.pagamentos.filter(p => new Date(p.data) >= ini && !ag[p.id]).map(p => {
     const cl = cliPor(p.cli), c = cv.find(x => x.cli === p.cli);
     if(!cl || !cl.tel || ehLoja(cl.tel)) return null;
     if(c && c.msgs.some(m => m.lado === 'enviada' && m.data > p.data.slice(0, 10) && LE_OBRIG.test(m.texto || ''))) return null;   // ele já agradeceu na conversa
     return {p, cl};
   }).filter(Boolean);
+  return [...pg, ...extra.slice(0, 60)];
+}
+// agradece quem está com a etiqueta ok e mandou comprovante (sem valor no app): "Recebi, Nome! Obrigado" + contato Nome + cidade + CLIENTE
+function agradeceOk(x){
+  const cf = D.cfg; cf.agradeceu = cf.agradeceu || {}; const chave = 'ok:' + x.m.id; if(cf.agradeceu[chave]) return; cf.agradeceu[chave] = hoje();
+  const z = x.c.z, cl = x.c.cli ? cliPor(x.c.cli) : null;
+  const nome = z && z.nome ? z.nome : cl && !pareceTel(cl.nome) ? cl.nome : (z && limpaPush(z.push)) || '';
+  const bom = nome && !pareceTel(nome), prim = bom ? nome.split(' ')[0] : '';
+  filaTexto(x.c.tel, x.c.cli || null, 'Recebi' + (prim ? ', ' + prim : '') + '! Muito obrigado pelo pagamento 🙏').catch(e => console.warn('agradecer ok:', e.message));
+  if(bom && !(z && z.nome)){ const zap = {...(cf.leZap || {})}, k = z ? z.tel : String(x.c.tel).replace(/\D/g, ''); zap[k] = {...(zap[k] || {}), nome, sobre:(x.c.cli ? sobreContato(x.c.cli) : cidadeVenda() + ' CLIENTE'), ...(z ? {} : {fora:1})}; cf.leZap = zap; }
 }
 function telaAgradecer(){
   const ls = semAgradecer(), dlg = $('#dlg');
   if(!ls.length){ irPara(3); return toast('todos os pagamentos do mês já foram agradecidos'); }
   dlg.innerHTML = `<h3>Agradecer os que faltam · ${ls.length}</h3>
-    <div class="peq">Pagamentos deste mês sem agradecimento. O app manda "Recebi, Nome, R$ X! Obrigado 🙏" e salva o contato. Sai devagar (o WhatsApp do PC limita o ritmo).</div>
-    <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" checked><label for="ag${i}"><b>${esc(x.cl.nome)}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}</label></div>`).join('')}</div>
+    <div class="peq">Quem pagou este mês e ainda não foi agradecido (pagamentos do app + conversas com a etiqueta <b>ok</b> que mandaram comprovante). O app manda "Recebi, Nome! Obrigado 🙏" e salva o contato como <b>Nome + cidade + CLIENTE</b>. Sai devagar (o WhatsApp do PC limita o ritmo). Depois abre o COBRAR TODOS.</div>
+    <div class="lelista">${ls.map((x, i) => `<div class="lel"><input type="checkbox" id="ag${i}" data-ag="${i}" checked><label for="ag${i}">${x.ok ? `<b>${esc(x.c.titulo)}</b> · mandou comprovante em ${dataBR(x.m.data)} (etiqueta ok)` : `<b>${esc(x.cl.nome)}</b> · ${R(x.p.valor)} · ${dataBR(x.p.data)}`}</label></div>`).join('')}</div>
     <div class="linha"><button class="bt" id="agx">DEPOIS</button><button class="bt cheio" id="ags">AGRADECER MARCADOS</button></div>`;
   $('#agx').onclick = () => dlg.close();
   $('#ags').onclick = () => { if(!(EXT || TESTE)) return toast('agradecer: só no PC com o WhatsApp Web aberto');
     const sim = [...$$('#dlg [data-ag]')].filter(b => b.checked).map(b => ls[+b.dataset.ag]); dlg.close();
-    sim.forEach(x => agradece(x.p.cli, x.p.valor, x.p.id)); salvar(); tudo(); irPara(3); toast(sim.length + ' agradecimento' + (sim.length === 1 ? '' : 's') + ' na fila · contatos salvos'); };
+    sim.forEach(x => x.ok ? agradeceOk(x) : agradece(x.p.cli, x.p.valor, x.p.id)); salvar(); tudo(); toast(sim.length + ' agradecimento' + (sim.length === 1 ? '' : 's') + ' na fila · contatos salvos');
+    if(filaTodos().length) setTimeout(cobrarTodos, 700); else irPara(3); };   // em seguida: COBRAR TODOS (1ª cobrança) pra quem está no Espeto
   dlg.showModal();
 }
 function pintaReceb(){
