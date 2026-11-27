@@ -1353,6 +1353,7 @@ function telaSecao(k){
   const corpo = {
     dados: `<label style="margin-top:0">CHAVE PIX</label><input id="s1" value="${esc(c.chavePix)}" placeholder="celular, e-mail ou chave aleatória">
       <label>NOME DA CHAVE PIX</label><input id="s2" value="${esc(c.recebedor)}" placeholder="como aparece pra quem paga">
+      <label>CIDADE ONDE ESTOU VENDENDO</label><input id="s22" value="${esc(c.cidadeVenda || 'Araucária')}" placeholder="Araucária"><div class="peq">O contato do cliente é salvo no WhatsApp como <b>Nome + cidade + CLIENTE</b> (ex.: Pedro Araucária CLIENTE). Mude aqui quando for vender em outra cidade.</div>
       <label>NOSSO WHATSAPP (DA LOJA)</label><input id="s3" type="tel" inputmode="tel" value="${c.zapLoja?esc(telBonito(c.zapLoja)):''}" placeholder="41 99999-9999">
       <div class="lel" style="border:0"><input type="checkbox" id="s20" ${c.pixBotao !== false ? 'checked' : ''}><label for="s20">No aviso do fiado, mandar o <b>Pix com botão de copiar</b> (igual ao /pix do WhatsApp)</label></div>
       <div class="lel" style="border:0"><input type="checkbox" id="s21" ${c.pixAuto ? 'checked' : ''}><label for="s21"><b>Pix automático</b> (Mercado Pago): cada fiado e cobrança leva um Pix <b>com o valor</b>; quando o cliente paga, o app dá baixa, põe <b>ok</b> e arquiva sozinho. Só ligue depois de configurar a conta (se falhar, vai a chave fixa).</label></div>
@@ -1384,7 +1385,7 @@ function telaSecao(k){
   else $('#ssalva').onclick=()=>{
     const c = D.cfg;   // a config de AGORA: a nuvem troca o D.cfg enquanto ele digita, e gravar na cópia de quando abriu = não salvava (26/11)
     if(k==='dados'){ const t=telLimpo($('#s3').value); if($('#s3').value.trim() && !/^55\d{10,11}$/.test(t)) return toast('WhatsApp estranho: use DDD + número');
-      Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), zapLoja:t, pixBotao:$('#s20').checked, pixAuto:$('#s21').checked}); }
+      Object.assign(c,{chavePix:$('#s1').value.trim(), recebedor:$('#s2').value.trim(), cidadeVenda:($('#s22').value.trim() || 'Araucária'), zapLoja:t, pixBotao:$('#s20').checked, pixAuto:$('#s21').checked}); }
     if(k==='cobranca') Object.assign(c,{msgFiado:$('#s4').value, msgCobrar:$('#s5').value});
     if(k==='oferta') Object.assign(c,{produtoNovo:$('#s10').value, msgOferta:$('#s11').value});
     salvar(); tudo(); toast('salvo'); telaMenu();
@@ -1561,7 +1562,7 @@ function agradece(cid, valor, pid){
   const prim = nome ? nome.split(' ')[0] : '';
   const texto = (cf.msgObrigado || 'Recebi{nome}, {valor}! Muito obrigado pelo pagamento 🙏').replace('{nome}', prim ? ', ' + prim : '').replace('{valor}', 'R$ ' + v2(valor));
   filaTexto(cl.tel, cid, texto).catch(e => console.warn('agradecer:', e.message));
-  if(nome && !pareceTel(nome) && z && !z.nome){ const zap = {...(cf.leZap || {})}; zap[z.tel] = {...(zap[z.tel] || {}), nome}; cf.leZap = zap; }   // salva o contato na agenda do WhatsApp
+  if(nome && !pareceTel(nome) && !(z && z.nome)){ const zap = {...(cf.leZap || {})}, k = z ? z.tel : String(cl.tel).replace(/\D/g, ''); zap[k] = {...(zap[k] || {}), nome, sobre:sobreContato(cid), ...(z ? {} : {fora:1})}; cf.leZap = zap; }   // salva o contato na agenda do WhatsApp: Nome + cidade + CLIENTE
 }
 function okConfirma(cid){
   const o = okAbertos().find(x => x.cid === cid); if(!o) return;
@@ -1700,6 +1701,9 @@ function carregaTesseract(){
     const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
     sc.onload = () => ok(window.Tesseract); sc.onerror = () => { OCR.lib = null; ruim(new Error('sem internet pro leitor de foto')); }; document.head.appendChild(sc); });
 }
+const cidadeVenda = () => (D.cfg.cidadeVenda || 'Araucária').trim();   // onde ele está vendendo agora (☰ > Dados): vai no nome do contato
+const cidadeDe = cid => { const cl = cliPor(cid); return (D.cfg.cidades || {})[cid] || (D.cfg.cidades || {})['t' + chaveTel(cl.tel || '')] || cidadeVenda(); };
+const sobreContato = cid => cidadeDe(cid) + ' CLIENTE';   // contato no WhatsApp = "Pedro Araucária CLIENTE" (nome + sobrenome)
 const MESES_OCR = {jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11};
 function leComprovante(txt){   // texto lido da foto → {valor, dataOk, recOk, ok}
   const t = semAc(txt).replace(/\s+/g, ' '), ach = [], re = /(?:r\$|rs|r \$)\s*(\d{1,3}(?:\.\d{3})+,\d{2}|\d+[.,]\d{2}|\d+)/g; let m;
@@ -1787,12 +1791,12 @@ function leAplica(ps){
     if(p.tipo === 'pagou'){
       if(p.cid && p.valor > 0.004 && !(cf.okPend[p.cid] && !cf.okPend[p.cid].fim)) cf.okPend = {...cf.okPend, [p.cid]: {valor:p.valor, dito:p.dito || 0, desde:new Date().toISOString(), fim:null}};
       if(leIgual(p)) baixa.push(p.cid);
-      if(p.noZap){ const z = z1(p.tel); z.ok = 1; z.arq = 1; if(!(p.cid && p.valor > 0.004)) z.tira = 1; }   // deve no Espeto: o pendente sai no RECEBI (etiqueta automática)
+      { const z = z1(p.tel); z.ok = 1; z.arq = 1; if(!p.noZap) z.fora = 1; if(!(p.cid && p.valor > 0.004)) z.tira = 1; }   // deve no Espeto: o pendente sai no RECEBI (etiqueta automática)
       if(cf.promessas && cf.promessas[p.k]){ const pr = {...cf.promessas}; delete pr[p.k]; cf.promessas = pr; }
       if(p.noZap && (cf.acompApp || {})[p.tel]) z1(p.tel).tiraAc = 1;
     }
-    if(p.tipo === 'nome'){ const cl = p.cid && D.clientes.find(x => x.id === p.cid); if(cl && pareceTel(cl.nome)) cl.nome = p.nome; if(p.agenda && p.noZap) z1(p.tel).nome = p.nome; }
-    if(p.tipo === 'cidade'){ cf.cidades = {...(cf.cidades || {}), [p.k]: p.cidade}; if(p.agenda && p.noZap) z1(p.tel).sobre = p.cidade; }
+    if(p.tipo === 'nome'){ const cl = p.cid && D.clientes.find(x => x.id === p.cid); if(cl && pareceTel(cl.nome)) cl.nome = p.nome; if(p.agenda && p.noZap){ const z = z1(p.tel); z.nome = p.nome; if(p.cid) z.sobre = sobreContato(p.cid); } }
+    if(p.tipo === 'cidade'){ cf.cidades = {...(cf.cidades || {}), [p.k]: p.cidade}; if(p.agenda && p.noZap) z1(p.tel).sobre = p.cidade + ' CLIENTE'; }
   });
   Object.keys(zap).forEach(t => { const z = zap[t]; if(z.sobre && !z.nome){ const c = conversas().find(x => x.z && x.z.tel === t), cl = c && c.cli && cliPor(c.cli);   // só cidade: o contato precisa de um nome
     const n = cl && !pareceTel(cl.nome) ? cl.nome : ''; if(n) z.nome = n; else delete z.sobre; } if(!Object.keys(z).length) delete zap[t]; });
@@ -1809,7 +1813,7 @@ function curaPagamentos(){
     const pid = 'ok-' + cid + '-' + Date.parse(p.desde); if(D.pagamentos.some(x => x.id === pid)) continue;
     const v = p.dito > 0.004 ? Math.min(p.dito, p.valor) : p.valor; if(!(v > 0)) continue;
     D.pagamentos.push({id:pid, data:p.desde, cli:cid, valor:v, forma:'pix'}); n++;
-    D.cfg.curaLog = [...(D.cfg.curaLog || []).slice(-9), {pid, em:hoje()}]; }
+    D.cfg.curaLog = [...(Array.isArray(D.cfg.curaLog) ? D.cfg.curaLog : Object.values(D.cfg.curaLog || {})).slice(-9), {pid, em:hoje()}]; }
   if(n){ D.pagamentos.sort((a, b) => a.data < b.data ? -1 : 1); salvar(); }
 }
 function pixBaixa(){
@@ -1877,15 +1881,15 @@ function acompVolta(){   // chegou o dia prometido (ou ele pagou): o app tira a 
 let LE_RODA = null;
 function leZapRoda(){
   if(!(EXT || TESTE) || LE_RODA) return; if(!TESTE && EXTV < 6) return;
-  const zap = D.cfg.leZap || {}, tels = Object.keys(zap).filter(t => ZC.conv[t]); if(!tels.length) return;
+  const zap = D.cfg.leZap || {}, tels = Object.keys(zap).filter(t => ZC.conv[t] || zap[t].fora); if(!tels.length) return;   // fora = conversa que o espelho ainda não tem: a extensão acha pelo número
   const okE = Object.values(ZC.etq).find(ehOk), pen = Object.values(ZC.etq).filter(ehCobrar), so = a => tels.filter(t => zap[t][a]), gs = [];
   if(okE && so('ok').length) gs.push({acao:'etiqueta', tels:so('ok'), extra:{etiqueta:okE.id, por:true}});
-  pen.forEach(e => { const ts = so('tira').filter(t => (ZC.conv[t].etiquetas || []).includes(e.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:e.id, por:false}}); });
+  pen.forEach(e => { const ts = so('tira').filter(t => !ZC.conv[t] || (ZC.conv[t].etiquetas || []).includes(e.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:e.id, por:false}}); });
   const penE = Object.values(ZC.etq).find(e => /pagamento pendente/i.test(e.nome || ''));
   if(penE && so('pend').length) gs.push({acao:'etiqueta', tels:so('pend'), extra:{etiqueta:penE.id, por:true}});
   const ac = acompEtq();
   if(ac && so('acomp').length) gs.push({acao:'etiqueta', tels:so('acomp'), extra:{etiqueta:ac.id, por:true}});
-  if(ac){ const ts = so('tiraAc').filter(t => (ZC.conv[t].etiquetas || []).includes(ac.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:ac.id, por:false}}); }
+  if(ac){ const ts = so('tiraAc').filter(t => ZC.conv[t] && (ZC.conv[t].etiquetas || []).includes(ac.id)); if(ts.length) gs.push({acao:'etiqueta', tels:ts, extra:{etiqueta:ac.id, por:false}}); }
   if(so('arq').length) gs.push({acao:'arquivar', tels:so('arq'), extra:{}});
   const ct = so('nome'); if(ct.length && (TESTE || EXTV >= 7)) gs.push({acao:'contato', tels:ct, extra:{nomes:Object.fromEntries(ct.map(t => [t, {nome:zap[t].nome, sobre:zap[t].sobre || ''}]))}});
   const resto = {}; if(!(TESTE || EXTV >= 7)) ct.forEach(t => resto[t] = {nome:zap[t].nome, sobre:zap[t].sobre});   // extensão antiga: o contato espera a 2.8.0
@@ -2731,7 +2735,7 @@ function pendentes(s = lerSinc()){
   return p;
 }
 // nuvem + campos que mudaram aqui; listas de datas (cobrados, etapas, áudios) juntam cliente a cliente
-const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos', 'msgsOcultas', 'agradeceu', 'ocr', 'curaLog'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
+const CFG_MAPA = ['cobrados', 'etapas', 'audios', 'okPend', 'pendIgn', 'promessas', 'leIgn', 'leFeito', 'cidades', 'acompApp', 'pixFeito', 'pixAbertos', 'msgsOcultas', 'agradeceu', 'ocr'];   // leZap não: o PC esvazia a fila e ela não pode voltar da nuvem
 function juntaCfg(nuvem, aqui, campos){
   const r = Object.assign({}, nuvem);
   (campos || []).forEach(k => { r[k] = CFG_MAPA.includes(k) && aqui[k] && typeof aqui[k] === 'object' ? Object.assign({}, nuvem[k] || {}, aqui[k]) : aqui[k]; });
