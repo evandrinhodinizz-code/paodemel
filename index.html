@@ -422,6 +422,23 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 #btZap{padding:5px 9px}
 nav .zapnav{position:relative;display:flex;justify-content:center;align-items:center;padding:10px 0 13px}
 nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
+/* VENDER compacto (28/11): menos espaço, produtos em linhas, a tela rola */
+.pag.vender{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.vender .impressora{margin:0 10px}.vender .janela{margin:-7px 10px 0;padding-bottom:6px}
+.vender .cupom{padding:10px 12px 14px}
+.vender .campos{grid-template-columns:1fr;gap:6px}.vender .campos label{font-size:10px}
+.vender .campos input{margin-top:2px;padding:7px 8px;font-size:16px}
+.vender .vcli{min-height:14px;font-size:11px;margin:3px 0}
+.prl{display:flex;align-items:center;gap:6px;padding:6px 4px;border-top:1px dashed #2b2b2b55}
+.prl.on{background:#2b2b2b0d}
+.prl .pn{flex:1;min-width:0}.prl .pn b{font-size:14px;display:block}.prl .pn small{font-size:10px;color:#6b6660}
+.prl.peq .pn b{font-size:12.5px}
+.prl button{font-family:var(--mono);font-weight:600;font-size:18px;width:38px;height:36px;border:1px solid #2b2b2b;border-radius:2px}
+.prl.peq button{width:34px;height:32px;font-size:16px}
+.prl button:active{background:#2b2b2b1a}
+.prl .qn{min-width:20px;text-align:center;font-size:17px;display:inline}
+.prl .ps{min-width:54px;text-align:right;font-size:12px}
+.vender .bandeja{margin:4px 10px 8px;gap:8px;padding:8px}.vender .obj{height:56px}
 </style>
 </head>
 <body>
@@ -439,16 +456,11 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
       <h2 class="coltit">VENDER</h2>
       <div class="impressora"></div>
       <div class="janela"><div class="cupom" id="cupom">
-        <h4>PÃO DE MEL DA VÓ</h4>
         <div class="c">CUPOM Nº <span id="numc"></span> · <span id="datac"></span> <span id="horac"></span></div>
-        <hr>
         <div class="campos"><label>WHATSAPP<input id="vtel" type="tel" inputmode="tel" enterkeyhint="next" autocomplete="off" placeholder="41 99999-9999"></label>
         <label>NOME<input id="vnome" enterkeyhint="done" autocomplete="off" placeholder="nome do cliente"></label></div>
         <div class="vcli" id="cli"></div>
-        <div class="l"><span id="prodn">PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
-        <div class="precos" id="precos"></div>
-        <div class="qtd2"><button data-d="-1" aria-label="menos um">−</button><b id="q2"></b><button data-d="1" aria-label="mais um">+</button></div>
-        <hr>
+        <div id="prods"></div>
         <div class="l tot"><span>TOTAL</span><span class="preco" id="t" title="digitar o total"></span></div>
         <div class="carimbo" id="carimbo">PAGO</div>
       </div></div>
@@ -660,7 +672,7 @@ $('#vtel').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDe
 $('#vnome').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#vnome').blur(); } });
 setTimeout(focaVenda, 600);   // abriu o app: já cai no campo do WhatsApp
 // tocar nos botões de pagar/quantidade/preço NÃO tira o foco do campo: o teclado fica aberto entre uma venda e outra
-$$('.bandeja .obj, .qtd2 button, #precos').forEach(b => b.addEventListener('mousedown', e => e.preventDefault()));
+$$('.bandeja .obj').forEach(b => b.addEventListener('mousedown', e => e.preventDefault()));
 function garanteCliente(){   // na hora da venda: usa o cadastrado ou cria o novo
   const {nome, tel, achado} = clienteDosCampos();
   if(achado){ if(!achado.tel && tel && /^55\d{10,11}$/.test(tel)) achado.tel = tel; return achado.id; }
@@ -673,52 +685,57 @@ const precosBt = () => (D.cfg.precos && D.cfg.precos.length ? D.cfg.precos : PAD
 const PROD0 = [{n:'Pão de mel', k:'pao', preco:15, desc:{min:2, preco:12.5}, custo:null}, {n:'Empadinha', k:'empadinha', preco:0, custo:0}];
 const produtos = () => (D.cfg.produtos && D.cfg.produtos.length ? D.cfg.produtos : PROD0);
 const prodPor = k => produtos().find(x => x.k === k) || produtos()[0];
-const precoAuto = () => { const p = prodPor(prod); return p.desc && q >= p.desc.min ? p.desc.preco : p.preco; };
+const Q = {pao:1};   // quantidade de cada produto neste cupom (o pão de mel já começa em 1: o caso mais comum vira 1 toque só)
+const qtdDe = k => Q[k] || 0;
+const unitDe = (p, n) => p.desc && n >= p.desc.min ? p.desc.preco : p.preco;
+const subDe = k => { const n = qtdDe(k); return n ? n * unitDe(prodPor(k), n) : 0; };
+const totalAuto = () => produtos().reduce((s, p) => s + subDe(p.k), 0);
+let totalMan = null;   // total digitado na mão (vale só pra esta venda)
+const totalVenda = () => totalMan != null ? totalMan : totalAuto();
 const custoDe = v => { const k = (D.cfg.prodVenda || {})[v.id], p = k ? prodPor(k) : null; return v.qtd * (p && p.custo != null ? p.custo : (D.cfg.custo || 0)); };
-let prod = 'pao', manual = false;
-function escolheProd(k){
-  const p = prodPor(k); prod = k; manual = false;
-  if(!(p.preco > 0)){ const x = prompt(`Preço de cada ${p.n.toLowerCase()} (R$):`, ''); if(!(num(x) > 0)){ prod = 'pao'; return desenha(); }
+function muda(k, d){   // + / − de um produto; produto sem preço (empadinha): pergunta na 1ª vez
+  const p = prodPor(k);
+  if(d > 0 && !(p.preco > 0)){ const x = prompt(`Preço de cada ${p.n.toLowerCase()} (R$):`, ''); if(!(num(x) > 0)) return;
     const c = prompt(`Quanto custa fazer cada ${p.n.toLowerCase()} (R$)? Pode deixar 0.`, '0');
     D.cfg.produtos = produtos().map(y => y.k === k ? {...y, preco:num(x), custo:num(c) || 0} : y); salvar(); }
-  desenha();
+  Q[k] = Math.max(0, qtdDe(k) + d); totalMan = null; desenha();
 }
 function desenha(){
-  if(!manual) preco = precoAuto();
-  const p = prodPor(prod), t = v2(q*preco);
-  $('#q').textContent=q; $('#q2').textContent=q; $('#t').textContent=t; $('#din').textContent=t; $('#preco').textContent=v2(preco);
-  $('#prodn').textContent = p.n.toUpperCase();
-  $('#precos').innerHTML = produtos().map(x=>`<button class="${x.k===prod?'on':''}" data-pk="${x.k}">${esc(x.n)}</button>`).join('')
-    + (p.desc ? `<small style="flex-basis:100%;text-align:center;opacity:.7">1 = ${v2(p.preco)} · a partir de ${p.desc.min} = ${v2(p.desc.preco)} cada</small>` : '');
-  $$('#precos button').forEach(b=>b.onclick=()=>escolheProd(b.dataset.pk));
+  const tot = totalVenda(), t = v2(tot);
+  $('#prods').innerHTML = produtos().map((p, i) => { const n = qtdDe(p.k);
+    const dica = !(p.preco > 0) ? 'toque + pra definir o preço' : p.desc ? (n >= p.desc.min ? `${n} × ${v2(p.desc.preco)} (desconto)` : `${v2(p.preco)} · ${p.desc.min}+ = ${v2(p.desc.preco)} cada`) : `cada ${R(p.preco)}`;
+    return `<div class="prl${n ? ' on' : ''}${i ? ' peq' : ''}"><div class="pn"><b>${esc(p.n)}</b><small>${dica}</small></div><button data-pk="${p.k}" data-d="-1" aria-label="menos">−</button><b class="qn">${n}</b><button data-pk="${p.k}" data-d="1" aria-label="mais">+</button><span class="ps">${n ? R(subDe(p.k)) : ''}</span></div>`; }).join('');
+  $$('#prods button').forEach(b => { b.onclick = () => muda(b.dataset.pk, +b.dataset.d); b.addEventListener('mousedown', e => e.preventDefault()); });
+  $('#t').textContent = t; $('#din').textContent = t;
   $('#numc').textContent = String(D.vendas.length+1).padStart(4,'0');
   $('#datac').textContent = new Date().toLocaleDateString('pt-BR');
   $('#horac').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
-function pedePreco(){ const p=prompt('Preço de cada um nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); manual=true; desenha(); } }
-$$('.qtd2 button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
-$('#preco').onclick=pedePreco;
-$('#t').onclick=()=>{ const p=prompt(`Total da venda (${q} pão${q>1?'es':''}) em R$:`, v2(q*preco)); if(p && num(p)>0){ preco=Math.round(num(p)/q*10000)/10000; manual=true; desenha(); } };
+$('#t').onclick=()=>{ const p=prompt('Total da venda em R$:', v2(totalVenda())); if(p && num(p)>0){ totalMan=num(p); desenha(); } };
 $$('.bandeja .obj').forEach(b=>b.onclick=()=>vender(b.dataset.f));
 
 function vender(f){
   if(ocupado) return;
+  const linhas = produtos().filter(p => qtdDe(p.k) > 0); if(!linhas.length) return toast('escolha o produto com o +');
   const cid = garanteCliente(); if(cid === false) return;
   if(!cid){ const t=$('.campos'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); $('#vnome').focus(); return toast('escreva o nome do cliente'); }
+  const auto = totalAuto(), tot = totalVenda(), fator = auto > 0 ? tot / auto : 1;
+  if(!(tot > 0)) return toast('defina o preço primeiro');
   sel = cid;
   ocupado = true;
-  if(!(preco > 0)){ ocupado = false; return toast('defina o preço primeiro'); }
-  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
-  if(prod !== 'pao') (D.cfg.prodVenda ||= {})[venda.id] = prod;   // data = ISO com hora e minuto (usado na tela NEGÓCIO)
-  D.vendas.push(venda); salvar();
-  if(f==='fiado') avisaFiado(cliPor(sel), q, q*preco);   // abre já (dentro do toque, senão o navegador bloqueia)
+  const quando = hoje();   // ISO com hora e minuto (usado na tela NEGÓCIO); 1 venda por produto do cupom, todas com a mesma hora
+  const novas = linhas.map(p => { const n = qtdDe(p.k), v = {id:id(), data:quando, cli:sel, qtd:n, preco:Math.round(unitDe(p, n) * fator * 10000) / 10000, forma:f};
+    if(p.k !== 'pao') (D.cfg.prodVenda ||= {})[v.id] = p.k; return v; });
+  D.vendas.push(...novas); salvar();
+  const q = novas.reduce((s, v) => s + v.qtd, 0);
+  if(f==='fiado') avisaFiado(cliPor(sel), q, tot);   // abre já (dentro do toque, senão o navegador bloqueia)
   const c=$('#carimbo'), cp=$('#cupom');
   c.textContent = f==='fiado' ? 'FIADO' : 'PAGO · '+NOME_F[f]; c.style.color = COR_F[f];
   c.classList.remove('bate'); void c.offsetWidth; c.classList.add('bate');
   if(navigator.vibrate) navigator.vibrate(18);
   // RÁPIDO (28/11): antes o campo só limpava depois de ~1 s e o app inteiro repintava junto; agora limpa e já volta pro teclado na hora
-  toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(q*preco)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==venda.id); salvar(); tudo(); toast('venda desfeita'); });
-  q=1; prod='pao'; manual=false; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
+  toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(tot)}`, ()=>{ const ids = new Set(novas.map(v=>v.id)); D.vendas=D.vendas.filter(v=>!ids.has(v.id)); salvar(); tudo(); toast('venda desfeita'); });
+  for(const k in Q) delete Q[k]; Q.pao = 1; totalMan = null; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
   focaVenda();
   setTimeout(()=>{ tudo(); }, 30);   // repinta as outras abas logo depois, sem segurar o próximo cliente
   setTimeout(()=>{ c.classList.remove('bate'); cp.classList.remove('sai'); void cp.offsetWidth; cp.classList.add('imprime'); ocupado=false; }, 260);
@@ -2862,8 +2879,8 @@ function troca(f, tela){
 document.addEventListener('keydown',e=>{
   if($('#dlg').open || $('#folha').open || /INPUT|TEXTAREA/.test(document.activeElement.tagName) || e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
-  if(k==='+'||k==='='){ q++; desenha(); }
-  else if(k==='-'){ q=Math.max(1,q-1); desenha(); }
+  if(k==='+'||k==='='){ muda('pao', 1); }
+  else if(k==='-'){ muda('pao', -1); }
   else if({p:'pix',d:'dinheiro',c:'cartao',f:'fiado'}[k]) vender({p:'pix',d:'dinheiro',c:'cartao',f:'fiado'}[k]);
 });
 
