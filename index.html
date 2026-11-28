@@ -440,10 +440,10 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
       <div class="impressora"></div>
       <div class="janela"><div class="cupom" id="cupom">
         <h4>PÃO DE MEL DA VÓ</h4>
-        <div class="c">CUPOM Nº <span id="numc"></span> · <span id="datac"></span></div>
+        <div class="c">CUPOM Nº <span id="numc"></span> · <span id="datac"></span> <span id="horac"></span></div>
         <hr>
-        <div class="campos"><label>NOME<input id="vnome" autocomplete="off" placeholder="nome do cliente"></label>
-        <label>WHATSAPP<input id="vtel" type="tel" inputmode="tel" autocomplete="off" placeholder="41 99999-9999"></label></div>
+        <div class="campos"><label>WHATSAPP<input id="vtel" type="tel" inputmode="tel" enterkeyhint="next" autocomplete="off" placeholder="41 99999-9999"></label>
+        <label>NOME<input id="vnome" enterkeyhint="done" autocomplete="off" placeholder="nome do cliente"></label></div>
         <div class="vcli" id="cli"></div>
         <div class="l"><span>PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
         <div class="precos" id="precos"></div>
@@ -533,7 +533,8 @@ function carregar(){
   try{ const t = JSON.parse(localStorage.getItem(CHAVE)); if(t){ t.cfg = Object.assign({}, PADRAO.cfg, t.cfg); t.pagamentos ||= []; return t; } }catch(e){}
   return JSON.parse(JSON.stringify(PADRAO));
 }
-function salvar(){ localStorage.setItem(CHAVE, JSON.stringify(D)); if(typeof agendaNuvem==='function') agendaNuvem(); }
+let CACHE_DEV = null;   // devedores() é chamado dezenas de vezes por repintada: guarda o resultado até salvar() ou o próximo ciclo (velocidade 28/11)
+function salvar(){ CACHE_DEV = null; localStorage.setItem(CHAVE, JSON.stringify(D)); if(typeof agendaNuvem==='function') agendaNuvem(); }
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist();
 
 // ===== Utilidades =====
@@ -574,6 +575,10 @@ function fiados(){
   return porCli;
 }
 function devedores(){
+  if(CACHE_DEV) return CACHE_DEV.slice();
+  const lista = devedoresCalc(); CACHE_DEV = lista; setTimeout(() => { CACHE_DEV = null; }, 0); return lista.slice();
+}
+function devedoresCalc(){
   const pc = fiados(), lista = [];
   for(const cid in pc){
     const abertas = pc[cid].filter(f=>f.falta>0.004);
@@ -589,9 +594,9 @@ const pags = $('#paginas'), botoes = $$('nav button:not(.zapnav)'), titulos = ['
 let atual = 0, quadro = 0;
 pags.addEventListener('scroll',()=>{ if(quadro) return; quadro=requestAnimationFrame(()=>{ quadro=0;
   const p = pags.scrollLeft/pags.clientWidth; $('#marcador').style.transform=`translateX(${p*100}%)`;
-  const i = Math.round(p); if(i!==atual){ atual=i; botoes.forEach((b,k)=>b.classList.toggle('on',k===i)); $('#titulo').textContent=titulos[i]; }
+  const i = Math.round(p); if(i!==atual){ atual=i; botoes.forEach((b,k)=>b.classList.toggle('on',k===i)); $('#titulo').textContent=titulos[i]; if(i===0) setTimeout(focaVenda, 60); else if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
 });},{passive:true});
-botoes.forEach((b,i)=>b.onclick=()=>pags.scrollTo({left:i*pags.clientWidth,behavior:'smooth'}));
+botoes.forEach((b,i)=>b.onclick=()=>{ pags.scrollTo({left:i*pags.clientWidth,behavior:innerWidth<1000?'auto':'smooth'}); if(i===0){ atual=0; focaVenda(); } });   // sem animação de rolagem: troca de aba instantânea
 const irPara = i => { if(innerWidth<1000) pags.scrollTo({left:i*pags.clientWidth,behavior:'smooth'}); };
 
 // ===== VENDER =====
@@ -642,7 +647,16 @@ function pintaTags(){   // mostra embaixo dos campos se é cliente já cadastrad
   $('#cli').innerHTML = achado ? `já cadastrado: <b>${esc(achado.nome)}</b>${achado.tel?' · '+telBonito(achado.tel):''}${dv>0.004?` · <span class="dv">deve ${R(dv)}</span>`:''}`
     : nome ? 'cliente novo: salva junto com a venda' : '';
 }
-$('#vnome').oninput = pintaTags; $('#vtel').oninput = pintaTags;
+$('#vnome').oninput = pintaTags;
+$('#vtel').oninput = () => { pintaTags();   // achou o cliente pelo número: já preenche o nome (menos digitação no sinaleiro)
+  const {achado} = clienteDosCampos(); if(achado && !$('#vnome').value.trim()) $('#vnome').value = achado.nome; };
+// VENDER já abre no teclado (pedido dele 28/11): WhatsApp primeiro, depois nome; Enter passa pro próximo
+const focaVenda = () => { if(!$('#dlg').open && !$('#folha').open && atual === 0) $('#vtel').focus({preventScroll:true}); };
+$('#vtel').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#vnome').focus(); } });
+$('#vnome').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#vnome').blur(); } });
+setTimeout(focaVenda, 600);   // abriu o app: já cai no campo do WhatsApp
+// tocar nos botões de pagar/quantidade/preço NÃO tira o foco do campo: o teclado fica aberto entre uma venda e outra
+$$('.bandeja .obj, .qtd2 button, #precos').forEach(b => b.addEventListener('mousedown', e => e.preventDefault()));
 function garanteCliente(){   // na hora da venda: usa o cadastrado ou cria o novo
   const {nome, tel, achado} = clienteDosCampos();
   if(achado){ if(!achado.tel && tel && /^55\d{10,11}$/.test(tel)) achado.tel = tel; return achado.id; }
@@ -659,6 +673,7 @@ function desenha(){
   $$('#precos button').forEach(b=>b.onclick=()=>{ if(b.dataset.p==='outro') return pedePreco(); preco=+b.dataset.p; desenha(); });
   $('#numc').textContent = String(D.vendas.length+1).padStart(4,'0');
   $('#datac').textContent = new Date().toLocaleDateString('pt-BR');
+  $('#horac').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 function pedePreco(){ const p=prompt('Preço de cada pão nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); desenha(); } }
 $$('.qtd2 button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
@@ -672,18 +687,19 @@ function vender(f){
   if(!cid){ const t=$('.campos'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); $('#vnome').focus(); return toast('escreva o nome do cliente'); }
   sel = cid;
   ocupado = true;
-  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
+  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};   // data = ISO com hora e minuto (usado na tela NEGÓCIO)
   D.vendas.push(venda); salvar();
   if(f==='fiado') avisaFiado(cliPor(sel), q, q*preco);   // abre já (dentro do toque, senão o navegador bloqueia)
   const c=$('#carimbo'), cp=$('#cupom');
   c.textContent = f==='fiado' ? 'FIADO' : 'PAGO · '+NOME_F[f]; c.style.color = COR_F[f];
   c.classList.remove('bate'); void c.offsetWidth; c.classList.add('bate');
   if(navigator.vibrate) navigator.vibrate(18);
-  setTimeout(()=>{ cp.classList.add('sai');
-    toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(q*preco)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==venda.id); salvar(); tudo(); toast('venda desfeita'); });
-  },520);
-  setTimeout(()=>{ c.classList.remove('bate'); cp.classList.remove('sai','imprime'); void cp.offsetWidth;
-    q=1; preco=D.cfg.preco; $('#vnome').value=''; $('#vtel').value=''; sel=null; tudo(); cp.classList.add('imprime'); ocupado=false; },980);
+  // RÁPIDO (28/11): antes o campo só limpava depois de ~1 s e o app inteiro repintava junto; agora limpa e já volta pro teclado na hora
+  toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(q*preco)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==venda.id); salvar(); tudo(); toast('venda desfeita'); });
+  q=1; preco=D.cfg.preco; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
+  focaVenda();
+  setTimeout(()=>{ tudo(); }, 30);   // repinta as outras abas logo depois, sem segurar o próximo cliente
+  setTimeout(()=>{ c.classList.remove('bate'); cp.classList.remove('sai'); void cp.offsetWidth; cp.classList.add('imprime'); ocupado=false; }, 260);
 }
 
 // ===== ESPETO =====
@@ -916,6 +932,7 @@ function pintaMes(){
   $('#mes').innerHTML = `
     <div class="maco"><i></i><i></i><i></i><div class="cinta">SOBROU<b>${Rmil(a.lucro)}</b>${vs===null?'ESTIMADO':`${vs>=0?'+':''}${vs.toFixed(0)}% VS ${abrev(ant)}`}</div></div>
     <div class="janela"><div class="cupom">
+      <button class="bt cheio" id="btNeg" style="width:100%;margin-bottom:10px">ANÁLISE DO NEGÓCIO (horários, médias, o que melhorar) ›</button>
       ${(() => { const h = resumoHoje(); return `<h4>HOJE</h4>
       <div class="l"><span>PÃES VENDIDOS</span><span>${h.paes} un</span></div>
       <div class="l"><span>RECEBIDO NA HORA</span><span>${v2(h.naHora)}</span></div>
@@ -950,7 +967,67 @@ function pintaMes(){
       <div class="l"><span>LUCRO</span><span>${v2(b.lucro)}</span></div>`:''}
       <div class="miuda">Lucro estimado: custo fixo de ${R(D.cfg.custo)} por pão (ingredientes, embalagem, avó, gás/luz). O exato vem com o extrato do banco.</div>
     </div></div>`;
+  $('#btNeg').onclick = telaNegocio;
   pintaReceb();
+}
+
+// ===== NEGÓCIO (pedido dele 28/11): horário da 1ª e da última venda, horas trabalhadas, pães por hora, médias dia/semana/mês e o que muda o resultado (roupa, abordagem, local) =====
+const diaChave = d => { d = new Date(d); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+const hhmm = min => String(Math.floor(min/60) % 24).padStart(2,'0') + ':' + String(Math.round(min%60)).padStart(2,'0');
+const horasTxt = h => { const m = Math.round(h*60); return Math.floor(m/60) + 'h' + String(m%60).padStart(2,'0'); };
+const media = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+function diasNegocio(){
+  const mp = {}, custo = D.cfg.custo || 0;
+  D.vendas.forEach(v => { const t = new Date(v.data), k = diaChave(t), x = mp[k] ||= {k, vs:[], paes:0, receb:0, min:[]};
+    x.vs.push(v); x.paes += v.qtd; x.min.push(t.getHours()*60 + t.getMinutes()); if(v.forma !== 'fiado') x.receb += v.qtd*v.preco; });
+  D.pagamentos.forEach(p => { const k = diaChave(p.data); if(mp[k]) mp[k].receb += p.valor; });
+  return Object.values(mp).map(x => { const a = Math.min(...x.min), b = Math.max(...x.min), h = (b-a)/60;
+    return {...x, ini:a, fim:b, horas:h, lucro:x.receb - x.paes*custo, pph:h >= 0.25 ? x.paes/h : null, dow:new Date(x.k+'T12:00').getDay(), dia:new Date(x.k+'T12:00')}; }).sort((a,b)=>a.k<b.k?-1:1);
+}
+function agrupa(ds, chaveFn){
+  const g = {}; ds.forEach(d => { const k = chaveFn(d.dia); (g[k] ||= {k, dias:0, paes:0, receb:0, lucro:0, horas:0}); const x = g[k]; x.dias++; x.paes += d.paes; x.receb += d.receb; x.lucro += d.lucro; x.horas += d.horas; });
+  return Object.values(g);
+}
+function telaNegocio(){
+  const ds = diasNegocio(), dlg = $('#dlg'), hojeK = diaChave(new Date()), dd = (D.cfg.diario ||= {});
+  const bloco = (tit, linhas) => `<div class="c" style="margin-top:12px"><b>${tit}</b></div>` + linhas.map(([a,b]) => `<div class="l"><span>${a}</span><span>${b}</span></div>`).join('');
+  if(!ds.length){ dlg.innerHTML = `<h3>Negócio</h3><p class="peq">Ainda não há vendas. Cada venda guarda o dia, a hora e o minuto sozinha.</p><div class="linha"><button class="bt" id="nx">FECHAR</button></div>`; $('#nx').onclick = () => dlg.close(); return dlg.showModal(); }
+  const comH = ds.filter(d => d.horas >= 0.25), semana = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return diaChave(x); };
+  const sem = agrupa(ds, semana), mes = agrupa(ds, d => diaChave(d).slice(0,7));
+  const mediaG = (g, nome) => { const hs = g.filter(x => x.horas > 0);
+    return bloco('MÉDIA POR ' + nome + ` (${g.length})`, [['pães vendidos', media(g.map(x=>x.paes)).toFixed(1).replace('.',',')], ['recebido', v2(media(g.map(x=>x.receb)))], ['lucro est.', v2(media(g.map(x=>x.lucro)))], ['horas trabalhadas', hs.length ? horasTxt(media(hs.map(x=>x.horas))) : '—'], ['dias trabalhados', media(g.map(x=>x.dias)).toFixed(1).replace('.',',')]]); };
+  const pph = comH.length ? comH.reduce((s,d)=>s+d.paes,0) / comH.reduce((s,d)=>s+d.horas,0) : 0;
+  const lph = comH.length ? comH.reduce((s,d)=>s+d.lucro,0) / comH.reduce((s,d)=>s+d.horas,0) : 0;
+  const todas = D.vendas, tot = todas.reduce((s,v)=>s+v.qtd*v.preco,0), fi = todas.filter(v=>v.forma==='fiado').reduce((s,v)=>s+v.qtd*v.preco,0);
+  const nomesDia = ['dom','seg','ter','qua','qui','sex','sáb'];
+  const porDow = nomesDia.map((n,i) => { const x = ds.filter(d=>d.dow===i); return {n, v:x.length ? media(x.map(d=>d.paes)) : 0, c:x.length}; });
+  const maxD = Math.max(...porDow.map(x=>x.v), 1);
+  const porHora = Array(24).fill(0); todas.forEach(v => porHora[new Date(v.data).getHours()] += v.qtd);
+  const h0 = porHora.findIndex(x=>x), h1 = 23 - [...porHora].reverse().findIndex(x=>x), maxH = Math.max(...porHora, 1), melhorH = porHora.indexOf(maxH);
+  const barras = (arr, rot, max, ini=0) => `<div style="display:flex;gap:2px;align-items:flex-end;height:60px;margin:6px 0 2px">${arr.map((v,i)=>`<i style="flex:1;background:var(--verm,#b33);height:${Math.max(v/max*100, v?4:0)}%;min-height:${v?2:0}px" title="${rot(i+ini)}: ${typeof v === 'number' ? v.toFixed(1).replace('.0','') : v}"></i>`).join('')}</div><div style="display:flex;gap:2px;font-size:9px;text-align:center">${arr.map((v,i)=>`<span style="flex:1">${rot(i+ini)}</span>`).join('')}</div>`;
+  // diário: o que ele fez em cada dia (roupa, abordagem, local) × resultado
+  const tags = c => [...new Set(Object.values(dd).map(x=>x[c]).filter(Boolean))];
+  const cmp = c => { const g = {}; ds.forEach(d => { const t = (dd[d.k]||{})[c]; if(!t) return; (g[t] ||= []).push(d); });
+    return Object.entries(g).map(([t,x]) => { const h = x.filter(d=>d.horas>=0.25), p = h.length ? h.reduce((s,d)=>s+d.paes,0)/h.reduce((s,d)=>s+d.horas,0) : null;
+      return [esc(t) + ` <small>(${x.length} dia${x.length>1?'s':''})</small>`, `${media(x.map(d=>d.paes)).toFixed(1).replace('.',',')} pães/dia · ${p===null?'—':p.toFixed(1).replace('.',',')+'/h'} · ${v2(media(x.map(d=>d.lucro)))}`]; }); };
+  const cd = dd[hojeK] || {};
+  const campo = (c, rot, ph) => `<label>${rot}<input data-dr="${c}" list="dl-${c}" value="${esc(cd[c]||'')}" placeholder="${ph}" autocomplete="off"></label><datalist id="dl-${c}">${tags(c).map(t=>`<option value="${esc(t)}">`).join('')}</datalist>`;
+  const comp = ['roupa','abordagem','local'].map(c => { const l = cmp(c); return l.length > 1 ? bloco('COMPARAR ' + c.toUpperCase() + ' (pães/dia · pães/hora · lucro/dia)', l) : ''; }).join('');
+  const ultimos = ds.slice(-10).reverse();
+  dlg.innerHTML = `<h3>Negócio · ${ds.length} dia${ds.length>1?'s':''} com venda</h3>
+    ${bloco('RITMO', [['pães por hora trabalhada', pph ? pph.toFixed(1).replace('.',',') : '—'], ['lucro est. por hora', lph ? v2(lph) : '—'], ['1ª venda (média)', hhmm(media(ds.map(d=>d.ini)))], ['última venda (média)', hhmm(media(ds.map(d=>d.fim)))], ['ticket médio', v2(tot / (todas.length||1))], ['fiado sobre o vendido', (tot ? fi/tot*100 : 0).toFixed(1).replace('.',',') + '%']])}
+    ${mediaG(ds.map(d=>({...d, dias:1})), 'DIA')}${mediaG(sem, 'SEMANA')}${mediaG(mes, 'MÊS')}
+    ${bloco('PÃES POR DIA DA SEMANA (média)', [])}${barras(porDow.map(x=>x.v), i=>nomesDia[i], maxD)}
+    ${h1 >= h0 && h0 >= 0 ? bloco('PÃES POR HORA DO DIA (melhor: ' + String(melhorH).padStart(2,'0') + 'h)', []) + barras(porHora.slice(h0, h1+1), i=>String(i).padStart(2,'0'), maxH, h0) : ''}
+    ${comp}
+    <div class="c" style="margin-top:12px"><b>ANOTE O DE HOJE (pra comparar depois)</b></div>
+    <div class="linha" style="margin-top:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">${campo('roupa','ROUPA','ex: camisa vermelha')}${campo('abordagem','ABORDAGEM','ex: oferece pelo vidro')}${campo('local','LOCAL','ex: sinaleiro X')}</div>
+    ${bloco('ÚLTIMOS DIAS (1ª → última · horas · pães · lucro)', ultimos.map(d => [new Date(d.k+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.',''), `${hhmm(d.ini)}→${hhmm(d.fim)} · ${horasTxt(d.horas)} · ${d.paes} · ${v2(d.lucro)}`]))}
+    <p class="peq">Horas = da 1ª à última venda do dia (precisa de 2+ vendas). Lucro = recebido − custo de ${R(D.cfg.custo||0)} por pão. Quanto mais dias anotados (roupa, abordagem, local), mais claro o que funciona.</p>
+    <div class="linha"><button class="bt cheio" id="nx">FECHAR</button></div>`;
+  dlg.querySelectorAll('[data-dr]').forEach(i => i.onchange = () => { const o = {...(D.cfg.diario[hojeK] || {})}; o[i.dataset.dr] = i.value.trim(); D.cfg.diario[hojeK] = o; salvar(); });
+  $('#nx').onclick = () => { dlg.close(); focaVenda(); };
+  dlg.showModal();
 }
 
 // ===== RECEBIMENTOS (protótipo 26/11): recebido semana/mês · vai pagar · cobrando =====
