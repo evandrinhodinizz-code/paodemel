@@ -1262,9 +1262,9 @@ function avisaFiado(c, qtd, valor){
   // 2 mensagens: o texto do fiado e logo depois o cartão Pix (o WhatsApp esconde o texto que vai DENTRO do cartão: print dele 26/11)
   if(ponteZap() && sb && usuario){ setTimeout(async()=>{ const z = {k:c.id, cli:c.id, tel:c.tel};
     const cod = await pixDaDivida(c.id, valor);
-    if(cod){ await responderZap(z, textoFiado(c, qtd, valor, true)); await responderZap(z, PIX_AVISO); await responderZap(z, cod); return; }
-    await responderZap(z, texto); if(pixPronto()) await responderZap(z, texto, null, 'pix'); }, 1000); return; }   // depois do carimbo
-  abreLink(c.tel, texto);
+    if(cod){ await responderZap(z, textoFiado(c, qtd, valor, true), null, 'text', true); await responderZap(z, PIX_AVISO, null, 'text', true); await responderZap(z, cod, null, 'text', true); return; }
+    await responderZap(z, texto, null, 'text', true); if(pixPronto()) await responderZap(z, texto, null, 'pix', true); }, 1000); return; }   // depois do carimbo; quieto = não abre a conversa nem sai da tela de vender
+  toast('fiado salvo, mas a mensagem não saiu: entre na conta (☰ > Ajustes) pra enviar sozinho');   // nunca abre o WhatsApp no meio da venda (pedido dele 28/11)
 }
 // ===== AGRADECIMENTO + FIDELIDADE (pedido dele 28/11): quem paga na hora recebe 1 mensagem: agradecimento + "pedido X de 10, faltam Y pro brinde". Cada 10 pedidos (editável) = 1 brinde. =====
 // 1 mensagem só (agradece + contador) em vez de 2: o WhatsApp do PC tem limite por hora e 2 por venda enche o cliente.
@@ -1287,7 +1287,7 @@ function textoAgradece(c, n){
 function enviaAgradece(cid){   // devolve o timer (a venda desfeita cancela); só manda quando dá pra enviar sozinho pelo PC, nunca abre o WhatsApp à toa
   const f = fid(), c = cliPor(cid);
   if(!f.on || !c || !c.tel || ehLoja(c.tel) || !(ponteZap() && sb && usuario)) return null;
-  return setTimeout(async () => { try{ await responderZap({k:c.id, cli:c.id, tel:c.tel}, textoAgradece(c, pedidosDe(cid))); }catch(e){ console.warn('agradece:', e.message); } }, 5500);
+  return setTimeout(async () => { try{ await responderZap({k:c.id, cli:c.id, tel:c.tel}, textoAgradece(c, pedidosDe(cid)), null, 'text', true); }catch(e){ console.warn('agradece:', e.message); } }, 5500);
 }
 function telaFidel(){
   const f = fid(), dlg = $('#dlg'), ta = (id, rot, v) => `<label>${rot}</label><textarea id="${id}" rows="3">${esc(v)}</textarea>`;
@@ -2850,7 +2850,7 @@ function zapSaude(){
 setInterval(() => { if(EXT && ponteZap() && !TESTE){ naFila.calado = true; praExt({tipo:'enviar', lista:[]}); } }, 20000);   // pega o que foi escrito no celular (a sincronização traz da nuvem)
 function janelaZap(c){ if(ponteZap()) return true;   // pelo WhatsApp dele (extensão) não tem regra de 24 h
   const r = c.msgs.filter(m=>m.lado==='recebida').pop(); return !!r && Date.now() - new Date(r.data) < 864e5; }
-async function responderZap(c, texto, depois, tipo){
+async function responderZap(c, texto, depois, tipo, quieto){   // quieto = manda pra fila sem abrir a conversa (venda no sinaleiro não sai da tela)
   texto = (texto||'').trim(); if(!texto) return;
   tipo = tipo === 'pix' ? 'pix' : 'text';   // pix = texto + cartão "copiar chave Pix" do WhatsApp
   if(ponteZap()){
@@ -2858,17 +2858,17 @@ async function responderZap(c, texto, depois, tipo){
     if(!tel) return toast('cliente sem telefone: cadastre o número em CLIENTES');
     if(ehLoja(tel)) return toast('esse é o número da loja: não envio pra ele');
     if(!sb || !usuario) return toast('entre na conta primeiro');
-    delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); }
+    if(!quieto){ delete RASC[c.k]; const z = $('#zt'); if(z){ z.value = ''; cresceZap(z); } }
     try{
       const {data, error} = TESTE ? {data:{ok:true, id:'fila_t' + Date.now(), data:new Date().toISOString()}, error:null} : await sb.functions.invoke('zap-extensao', {body:{fila:{tel, cli:c.cli, texto, tipo}}});
       if(error || !data || !data.ok){ let msg = error ? error.message : 'sem resposta'; try{ const j = await error.context.json(); msg = j.erro || msg; }catch(e){} throw new Error(msg); }
       MSG.m[data.id] = {id:data.id, tel:String(tel).replace(/\D/g,''), nome:'', cli:c.cli, lado:'enviada', tipo, texto, data:data.data, sugestao:null, status:'lida', entrega:'fila', atualizado:''};
-      guardaMsg(); telaConversa(c.k, true); $('#zm').scrollTop = 1e9;
-      if(EXT) despachaZap(); else toast('na fila: sai pelo PC (WhatsApp Web aberto)');
+      guardaMsg(); if(!quieto){ telaConversa(c.k, true); $('#zm').scrollTop = 1e9; }
+      if(EXT) despachaZap(); else if(!quieto) toast('na fila: sai pelo PC (WhatsApp Web aberto)');
       if(depois) depois();
     }catch(e){
       toast('não foi pra fila: ' + e.message);
-      if(!RASC[c.k]){ RASC[c.k] = texto; const z2 = $('#zt'); if(z2 && zapTela===c.k){ z2.value = texto; cresceZap(z2); } }
+      if(!quieto && !RASC[c.k]){ RASC[c.k] = texto; const z2 = $('#zt'); if(z2 && zapTela===c.k){ z2.value = texto; cresceZap(z2); } }
     }
     return;
   }
