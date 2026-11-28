@@ -656,9 +656,13 @@ function pintaTags(){   // mostra embaixo dos campos se é cliente já cadastrad
   const {nome, achado} = clienteDosCampos();
   sel = achado ? achado.id : null;
   const dv = achado ? deve(achado.id) : 0;
-  $('#cli').innerHTML = achado ? `já cadastrado: <b>${esc(achado.nome)}</b>${achado.tel?' · '+telBonito(achado.tel):''}${dv>0.004?` · <span class="dv">deve ${R(dv)}</span>`:''}`
+  let fi = ''; if(achado && fid().on){ const meta = fid().meta || 10, n = pedidosDe(achado.id), bp = brindesPend(achado.id);
+    fi = ` · pedidos <b>${bp > 0 && n % meta === 0 ? meta : n % meta}/${meta}</b>` + (bp > 0 ? ` · 🎁 <b>BRINDE</b> <a href="#" data-brinde="${achado.id}">ENTREGUEI</a>` : ''); }
+  $('#cli').innerHTML = achado ? `já cadastrado: <b>${esc(achado.nome)}</b>${achado.tel?' · '+telBonito(achado.tel):''}${dv>0.004?` · <span class="dv">deve ${R(dv)}</span>`:''}${fi}`
     : nome ? 'cliente novo: salva junto com a venda' : '';
 }
+$('#cli').addEventListener('click', e => { const a = e.target.closest('[data-brinde]'); if(!a) return; e.preventDefault(); const cid = a.dataset.brinde, r = {...(D.cfg.resgates || {})}; r[cid] = (r[cid] || 0) + 1; D.cfg.resgates = r; salvar(); pintaTags();
+  toast('brinde entregue', () => { r[cid]--; D.cfg.resgates = {...r}; salvar(); pintaTags(); }); });
 $('#vnome').oninput = pintaTags;
 $('#vtel').oninput = () => { pintaTags();   // achou o cliente pelo número: já preenche o nome (menos digitação no sinaleiro)
   const {achado, tel} = clienteDosCampos(); if(achado && !$('#vnome').value.trim()) $('#vnome').value = achado.nome;
@@ -729,12 +733,13 @@ function vender(f){
   D.vendas.push(...novas); salvar();
   const q = novas.reduce((s, v) => s + v.qtd, 0);
   if(f==='fiado') avisaFiado(cliPor(sel), q, tot);   // abre já (dentro do toque, senão o navegador bloqueia)
+  const tmAg = f === 'fiado' ? null : enviaAgradece(sel);   // pagou na hora: agradece + contador do brinde (sai em ~5 s; desfazer cancela)
   const c=$('#carimbo'), cp=$('#cupom');
   c.textContent = f==='fiado' ? 'FIADO' : 'PAGO · '+NOME_F[f]; c.style.color = COR_F[f];
   c.classList.remove('bate'); void c.offsetWidth; c.classList.add('bate');
   if(navigator.vibrate) navigator.vibrate(18);
   // RÁPIDO (28/11): antes o campo só limpava depois de ~1 s e o app inteiro repintava junto; agora limpa e já volta pro teclado na hora
-  toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(tot)}`, ()=>{ const ids = new Set(novas.map(v=>v.id)); D.vendas=D.vendas.filter(v=>!ids.has(v.id)); salvar(); tudo(); toast('venda desfeita'); });
+  toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(tot)}`, ()=>{ clearTimeout(tmAg); const ids = new Set(novas.map(v=>v.id)); D.vendas=D.vendas.filter(v=>!ids.has(v.id)); salvar(); tudo(); toast('venda desfeita'); });
   for(const k in Q) delete Q[k]; Q.pao = 1; totalMan = null; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
   focaVenda();
   setTimeout(()=>{ tudo(); }, 30);   // repinta as outras abas logo depois, sem segurar o próximo cliente
@@ -1261,6 +1266,43 @@ function avisaFiado(c, qtd, valor){
     await responderZap(z, texto); if(pixPronto()) await responderZap(z, texto, null, 'pix'); }, 1000); return; }   // depois do carimbo
   abreLink(c.tel, texto);
 }
+// ===== AGRADECIMENTO + FIDELIDADE (pedido dele 28/11): quem paga na hora recebe 1 mensagem: agradecimento + "pedido X de 10, faltam Y pro brinde". Cada 10 pedidos (editável) = 1 brinde. =====
+// 1 mensagem só (agradece + contador) em vez de 2: o WhatsApp do PC tem limite por hora e 2 por venda enche o cliente.
+const FID0 = {on:true, meta:10, premio:'1 pão de mel de brinde',
+  msgAg:'NÓS DA SHALOM, SHALOM DELÍCIAS CASEIRAS, agradecemos a sua confiança, {nome}! 🙏 Queremos seu feedback mais tarde!',
+  msgPed:'Esse foi o seu pedido {n} de {meta}. Faltam {faltam} pra você ganhar {premio}! 🎁',
+  msgGanhou:'Parabéns! Você completou {meta} pedidos e ganhou {premio}! 🎉 Fala com a gente pra receber.'};
+function fid(){ return {...FID0, ...(D.cfg.fidel || {})}; }
+function pedidosDe(cid){   // 1 pedido = 1 cupom (vendas do mesmo cliente na mesma hora); fiado só conta depois de pago
+  const abertas = new Set((fiados()[cid] || []).filter(f => f.falta > 0.004).map(f => f.v.id)), datas = new Set();
+  D.vendas.forEach(v => { if(v.cli === cid && !abertas.has(v.id)) datas.add(v.data); });
+  return datas.size;
+}
+const brindesPend = cid => Math.floor(pedidosDe(cid) / (fid().meta || 10)) - ((D.cfg.resgates || {})[cid] || 0);
+function textoAgradece(c, n){
+  const f = fid(), meta = f.meta || 10, ganhou = n > 0 && n % meta === 0, nc = ganhou ? meta : (n % meta) || meta;
+  const t = (f.msgAg + '\n\n' + (ganhou ? f.msgGanhou : f.msgPed)).replace(/\{n\}/g, nc).replace(/\{meta\}/g, meta).replace(/\{faltam\}/g, meta - nc).replace(/\{premio\}/g, f.premio);
+  return preencher(t, c, {}).trim();
+}
+function enviaAgradece(cid){   // devolve o timer (a venda desfeita cancela); só manda quando dá pra enviar sozinho pelo PC, nunca abre o WhatsApp à toa
+  const f = fid(), c = cliPor(cid);
+  if(!f.on || !c || !c.tel || ehLoja(c.tel) || !(ponteZap() && sb && usuario)) return null;
+  return setTimeout(async () => { try{ await responderZap({k:c.id, cli:c.id, tel:c.tel}, textoAgradece(c, pedidosDe(cid))); }catch(e){ console.warn('agradece:', e.message); } }, 5500);
+}
+function telaFidel(){
+  const f = fid(), dlg = $('#dlg'), ta = (id, rot, v) => `<label>${rot}</label><textarea id="${id}" rows="3">${esc(v)}</textarea>`;
+  dlg.innerHTML = `<h3>Agradecimento e brinde</h3>
+    <label><input type="checkbox" id="fon" ${f.on ? 'checked' : ''}> Mandar mensagem a quem paga na hora (pix, dinheiro, cartão)</label>
+    <div class="linha" style="margin-top:6px"><div><label>PEDIDOS PRO BRINDE</label><input id="fmeta" inputmode="numeric" value="${f.meta}"></div><div><label>BRINDE</label><input id="fpre" value="${esc(f.premio)}"></div></div>
+    ${ta('fag', 'AGRADECIMENTO', f.msgAg)}${ta('fped', 'CONTADOR (todo pedido)', f.msgPed)}${ta('fgan', 'QUANDO GANHA O BRINDE', f.msgGanhou)}
+    <div class="peq">Use {nome} {n} {meta} {faltam} {premio}. Cada pedido (cupom) conta 1, de qualquer valor; fiado só conta depois de pago. O envio sai pelo WhatsApp do PC (precisa estar logado e com o PC ligado).</div>
+    <div class="linha"><button class="bt" id="fx2">VOLTAR</button><button class="bt cheio" id="fs">SALVAR</button></div>`;
+  $('#fx2').onclick = () => dlg.close();
+  $('#fs').onclick = () => { const m = parseInt($('#fmeta').value) || 10;
+    D.cfg.fidel = {on:$('#fon').checked, meta:Math.max(2, m), premio:$('#fpre').value.trim() || FID0.premio, msgAg:$('#fag').value.trim() || FID0.msgAg, msgPed:$('#fped').value.trim() || FID0.msgPed, msgGanhou:$('#fgan').value.trim() || FID0.msgGanhou};
+    salvar(); dlg.close(); toast('salvo'); pintaTags(); };
+  dlg.showModal();
+}
 const ehLoja = tel => !!D.cfg.zapLoja && chaveTel(tel) === chaveTel(D.cfg.zapLoja);   // nunca mandar cobrança/aviso pro próprio número
 function abrirWhats(c, texto, depois){
   if(!c.tel) return toast('cliente sem WhatsApp: edite em CLIENTES');
@@ -1517,9 +1559,10 @@ function telaMenu(){
   const falta = {dados: !D.cfg.chavePix ? 'falta a chave Pix' : '', backup: !D.cfg.ultimoBackup ? 'nunca feito' : dias(D.cfg.ultimoBackup)+' dias atrás'};
   f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Menu</h3>
     <button class="menu-it" id="mAtu"><b>⟳ Atualizar o app</b><small>pega a versão nova</small><span>›</span></button>
+    <button class="menu-it" id="mFid"><b>Agradecimento e brinde</b><small>${fid().on ? 'a cada ' + fid().meta + ' pedidos' : 'desligado'}</small><span>›</span></button>
     ${Object.keys(SECOES).map(k=>`<button class="menu-it" data-sec="${k}"><b>${SECOES[k]}</b>${falta[k]?`<small>${falta[k]}</small>`:''}<span>›</span></button>`).join('')}
     <button class="menu-it" data-sec="cfg"><b>Ajustes do app</b><small>conta</small><span>›</span></button>`;
-  $('#fx').onclick=()=>f.close(); $('#mAtu').onclick=atualizaApp;
+  $('#fx').onclick=()=>f.close(); $('#mAtu').onclick=atualizaApp; $('#mFid').onclick=()=>{ f.close(); telaFidel(); };
   f.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=> b.dataset.sec==='cfg' ? telaConfig() : telaSecao(b.dataset.sec));
   troca(f, 'menu'); if(!f.open) f.showModal();
 }
