@@ -422,7 +422,6 @@ button.tq-x{width:22px;height:22px;line-height:22px;font-size:13px;margin:-4px -
 #btZap{padding:5px 9px}
 nav .zapnav{position:relative;display:flex;justify-content:center;align-items:center;padding:10px 0 13px}
 nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
-#btAtu{padding-left:3px;padding-right:3px;min-width:0;width:28px;font-size:18px}
 </style>
 </head>
 <body>
@@ -431,7 +430,7 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
     <button class="hb menu" id="btMenu" aria-label="Menu">☰</button><div class="selo">PÃO<br>DE MEL<br>DA VÓ</div>
     <h1 id="titulo">Vender</h1><span class="marca">Pão de Mel da Vó</span>
     <small id="data"></small>
-    <button class="hb" id="btZap" aria-label="WhatsApp do aplicativo" title="WhatsApp do aplicativo"><svg class="icozap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.6 20.4l1.2-4.1A8.6 8.6 0 1 1 7.9 19.3z"/><path fill="currentColor" stroke="none" d="M9.1 7.9c.3-.6.8-.6 1.1 0l.6 1.4c.1.3 0 .6-.2.8l-.5.5c.5 1 1.3 1.8 2.3 2.3l.5-.5c.2-.2.5-.3.8-.2l1.4.6c.6.3.6.8 0 1.1-.9.6-2 .7-3 .2a8 8 0 0 1-3.2-3.2c-.5-1-.4-2.1.2-3z"/></svg><i class="selo-n oculto" id="zapN"></i></button><button class="hb" id="btAvi" aria-label="Avisos" title="Avisos"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><i class="selo-n oculto" id="aviN"></i></button><button class="hb" id="btAtu" aria-label="Atualizar o app" title="Atualizar o app (pega a versão nova)">⟳</button><button class="hb" id="btCli">CLIENTES</button><button class="hb" id="btCfg" aria-label="Configurar">⚙<i class="nuvem" id="nuvem"></i></button>
+    <button class="hb" id="btZap" aria-label="WhatsApp do aplicativo" title="WhatsApp do aplicativo"><svg class="icozap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.6 20.4l1.2-4.1A8.6 8.6 0 1 1 7.9 19.3z"/><path fill="currentColor" stroke="none" d="M9.1 7.9c.3-.6.8-.6 1.1 0l.6 1.4c.1.3 0 .6-.2.8l-.5.5c.5 1 1.3 1.8 2.3 2.3l.5-.5c.2-.2.5-.3.8-.2l1.4.6c.6.3.6.8 0 1.1-.9.6-2 .7-3 .2a8 8 0 0 1-3.2-3.2c-.5-1-.4-2.1.2-3z"/></svg><i class="selo-n oculto" id="zapN"></i></button><button class="hb" id="btAvi" aria-label="Avisos" title="Avisos"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><i class="selo-n oculto" id="aviN"></i></button><button class="hb" id="btCli">CLIENTES</button><button class="hb" id="btCfg" aria-label="Configurar">⚙<i class="nuvem" id="nuvem"></i></button>
   </header>
   <div class="painel-av oculto" id="avisos"></div>
 
@@ -1500,9 +1499,10 @@ function telaMenu(){
   const f = $('#folha'); f.classList.remove('zap'); delete f.dataset.k;
   const falta = {dados: !D.cfg.chavePix ? 'falta a chave Pix' : '', backup: !D.cfg.ultimoBackup ? 'nunca feito' : dias(D.cfg.ultimoBackup)+' dias atrás'};
   f.innerHTML = `<button class="bt fechar" style="padding:8px 12px" id="fx">FECHAR</button><h3>Menu</h3>
+    <button class="menu-it" id="mAtu"><b>⟳ Atualizar o app</b><small>pega a versão nova</small><span>›</span></button>
     ${Object.keys(SECOES).map(k=>`<button class="menu-it" data-sec="${k}"><b>${SECOES[k]}</b>${falta[k]?`<small>${falta[k]}</small>`:''}<span>›</span></button>`).join('')}
     <button class="menu-it" data-sec="cfg"><b>Ajustes do app</b><small>conta</small><span>›</span></button>`;
-  $('#fx').onclick=()=>f.close();
+  $('#fx').onclick=()=>f.close(); $('#mAtu').onclick=atualizaApp;
   f.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=> b.dataset.sec==='cfg' ? telaConfig() : telaSecao(b.dataset.sec));
   troca(f, 'menu'); if(!f.open) f.showModal();
 }
@@ -3113,14 +3113,14 @@ tudo(); pintaZap();
 if(!TESTE) iniciarNuvem();
 if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js');
 // ⟳ ATUALIZAR (pedido dele 28/11): apaga as cópias guardadas, tira o service worker e recarrega pela rede (fechar/abrir não bastava: o navegador reaproveitava a cópia). Vendas e config ficam no aparelho/nuvem, nada se perde.
-$('#btAtu').onclick = async () => {
-  const b = $('#btAtu'); b.textContent = '…'; b.disabled = true;
+async function atualizaApp(){   // fica no menu ☰ (pedido dele 28/11)
+  toast('atualizando…');
   try{ salvar(); }catch(e){}
   try{ if('serviceWorker' in navigator) for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); }catch(e){}
   try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){}
   try{ await fetch(location.pathname, {cache:'reload'}); }catch(e){}   // força a rede a trazer o index.html novo
   const u = new URL(location.href); u.searchParams.set('v', Date.now()); location.replace(u.toString());
-};
+}
 </script>
 </body>
 </html>
