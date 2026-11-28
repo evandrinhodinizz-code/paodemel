@@ -445,7 +445,7 @@ nav .zapnav .selo-n{top:4px;right:calc(50% - 24px)}
         <div class="campos"><label>WHATSAPP<input id="vtel" type="tel" inputmode="tel" enterkeyhint="next" autocomplete="off" placeholder="41 99999-9999"></label>
         <label>NOME<input id="vnome" enterkeyhint="done" autocomplete="off" placeholder="nome do cliente"></label></div>
         <div class="vcli" id="cli"></div>
-        <div class="l"><span>PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
+        <div class="l"><span id="prodn">PÃO DE MEL</span><span><span id="q"></span> × <span class="preco" id="preco" title="mudar o preço"></span></span></div>
         <div class="precos" id="precos"></div>
         <div class="qtd2"><button data-d="-1" aria-label="menos um">−</button><b id="q2"></b><button data-d="1" aria-label="mais um">+</button></div>
         <hr>
@@ -649,7 +649,11 @@ function pintaTags(){   // mostra embaixo dos campos se é cliente já cadastrad
 }
 $('#vnome').oninput = pintaTags;
 $('#vtel').oninput = () => { pintaTags();   // achou o cliente pelo número: já preenche o nome (menos digitação no sinaleiro)
-  const {achado} = clienteDosCampos(); if(achado && !$('#vnome').value.trim()) $('#vnome').value = achado.nome; };
+  const {achado, tel} = clienteDosCampos(); if(achado && !$('#vnome').value.trim()) $('#vnome').value = achado.nome;
+  if(/^55\d{10,11}$/.test(tel) && (tel.length === 13 || $('#vtel').value.replace(/\D/g,'').length >= 11)) $('#vnome').focus();   // número completo = pula pro nome sozinho (o teclado numérico do celular não tem Enter)
+};
+// celular não abre o teclado sozinho ao abrir o app: o 1º toque em qualquer lugar vazio da tela de vender já cai no WhatsApp
+document.querySelector('.pag.vender').addEventListener('pointerup', e => { if(!e.target.closest('button,input,a,.bandeja')) focaVenda(); });
 // VENDER já abre no teclado (pedido dele 28/11): WhatsApp primeiro, depois nome; Enter passa pro próximo
 const focaVenda = () => { if(!$('#dlg').open && !$('#folha').open && atual === 0) $('#vtel').focus({preventScroll:true}); };
 $('#vtel').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#vnome').focus(); } });
@@ -665,20 +669,36 @@ function garanteCliente(){   // na hora da venda: usa o cadastrado ou cria o nov
   const n = {id:id(), nome, tel: /^55\d{10,11}$/.test(tel) ? tel : ''}; D.clientes.push(n); return n.id;
 }
 const precosBt = () => (D.cfg.precos && D.cfg.precos.length ? D.cfg.precos : PADRAO.cfg.precos);
+// PRODUTOS (28/11): pão de mel R$15; a partir de 2 = R$12,50 cada (2 = 25, 4 = 50). Empadinha: preço ele define na 1ª vez. O produto de cada venda fica em D.cfg.prodVenda[idDaVenda] (pão de mel = sem registro), pra não mexer na tabela da nuvem.
+const PROD0 = [{n:'Pão de mel', k:'pao', preco:15, desc:{min:2, preco:12.5}, custo:null}, {n:'Empadinha', k:'empadinha', preco:0, custo:0}];
+const produtos = () => (D.cfg.produtos && D.cfg.produtos.length ? D.cfg.produtos : PROD0);
+const prodPor = k => produtos().find(x => x.k === k) || produtos()[0];
+const precoAuto = () => { const p = prodPor(prod); return p.desc && q >= p.desc.min ? p.desc.preco : p.preco; };
+const custoDe = v => { const k = (D.cfg.prodVenda || {})[v.id], p = k ? prodPor(k) : null; return v.qtd * (p && p.custo != null ? p.custo : (D.cfg.custo || 0)); };
+let prod = 'pao', manual = false;
+function escolheProd(k){
+  const p = prodPor(k); prod = k; manual = false;
+  if(!(p.preco > 0)){ const x = prompt(`Preço de cada ${p.n.toLowerCase()} (R$):`, ''); if(!(num(x) > 0)){ prod = 'pao'; return desenha(); }
+    const c = prompt(`Quanto custa fazer cada ${p.n.toLowerCase()} (R$)? Pode deixar 0.`, '0');
+    D.cfg.produtos = produtos().map(y => y.k === k ? {...y, preco:num(x), custo:num(c) || 0} : y); salvar(); }
+  desenha();
+}
 function desenha(){
-  const t = v2(q*preco), ps = precosBt(), outro = !ps.some(p=>Math.abs(p-preco)<0.005);
+  if(!manual) preco = precoAuto();
+  const p = prodPor(prod), t = v2(q*preco);
   $('#q').textContent=q; $('#q2').textContent=q; $('#t').textContent=t; $('#din').textContent=t; $('#preco').textContent=v2(preco);
-  $('#precos').innerHTML = ps.map(p=>`<button class="${Math.abs(p-preco)<0.005?'on':''}" data-p="${p}">${v2(p)}</button>`).join('')
-    + `<button class="${outro?'on':''}" data-p="outro">${outro?v2(preco):'OUTRO'}</button>`;
-  $$('#precos button').forEach(b=>b.onclick=()=>{ if(b.dataset.p==='outro') return pedePreco(); preco=+b.dataset.p; desenha(); });
+  $('#prodn').textContent = p.n.toUpperCase();
+  $('#precos').innerHTML = produtos().map(x=>`<button class="${x.k===prod?'on':''}" data-pk="${x.k}">${esc(x.n)}</button>`).join('')
+    + (p.desc ? `<small style="flex-basis:100%;text-align:center;opacity:.7">1 = ${v2(p.preco)} · a partir de ${p.desc.min} = ${v2(p.desc.preco)} cada</small>` : '');
+  $$('#precos button').forEach(b=>b.onclick=()=>escolheProd(b.dataset.pk));
   $('#numc').textContent = String(D.vendas.length+1).padStart(4,'0');
   $('#datac').textContent = new Date().toLocaleDateString('pt-BR');
   $('#horac').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
-function pedePreco(){ const p=prompt('Preço de cada pão nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); desenha(); } }
+function pedePreco(){ const p=prompt('Preço de cada um nesta venda (R$):', v2(preco)); if(p && num(p)>0){ preco=num(p); manual=true; desenha(); } }
 $$('.qtd2 button').forEach(b=>b.onclick=()=>{ q=Math.max(1,q+(+b.dataset.d)); desenha(); });
 $('#preco').onclick=pedePreco;
-$('#t').onclick=()=>{ const p=prompt(`Total da venda (${q} pão${q>1?'es':''}) em R$:`, v2(q*preco)); if(p && num(p)>0){ preco=Math.round(num(p)/q*10000)/10000; desenha(); } };
+$('#t').onclick=()=>{ const p=prompt(`Total da venda (${q} pão${q>1?'es':''}) em R$:`, v2(q*preco)); if(p && num(p)>0){ preco=Math.round(num(p)/q*10000)/10000; manual=true; desenha(); } };
 $$('.bandeja .obj').forEach(b=>b.onclick=()=>vender(b.dataset.f));
 
 function vender(f){
@@ -687,7 +707,9 @@ function vender(f){
   if(!cid){ const t=$('.campos'); t.classList.remove('chama'); void t.offsetWidth; t.classList.add('chama'); $('#vnome').focus(); return toast('escreva o nome do cliente'); }
   sel = cid;
   ocupado = true;
-  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};   // data = ISO com hora e minuto (usado na tela NEGÓCIO)
+  if(!(preco > 0)){ ocupado = false; return toast('defina o preço primeiro'); }
+  const venda = {id:id(), data:hoje(), cli:sel, qtd:q, preco, forma:f};
+  if(prod !== 'pao') (D.cfg.prodVenda ||= {})[venda.id] = prod;   // data = ISO com hora e minuto (usado na tela NEGÓCIO)
   D.vendas.push(venda); salvar();
   if(f==='fiado') avisaFiado(cliPor(sel), q, q*preco);   // abre já (dentro do toque, senão o navegador bloqueia)
   const c=$('#carimbo'), cp=$('#cupom');
@@ -696,7 +718,7 @@ function vender(f){
   if(navigator.vibrate) navigator.vibrate(18);
   // RÁPIDO (28/11): antes o campo só limpava depois de ~1 s e o app inteiro repintava junto; agora limpa e já volta pro teclado na hora
   toast(f==='fiado' ? 'nota foi pro espeto' : `venda salva · ${R(q*preco)}`, ()=>{ D.vendas=D.vendas.filter(v=>v.id!==venda.id); salvar(); tudo(); toast('venda desfeita'); });
-  q=1; preco=D.cfg.preco; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
+  q=1; prod='pao'; manual=false; $('#vnome').value=''; $('#vtel').value=''; sel=null; $('#cli').innerHTML=''; desenha();
   focaVenda();
   setTimeout(()=>{ tudo(); }, 30);   // repinta as outras abas logo depois, sem segurar o próximo cliente
   setTimeout(()=>{ c.classList.remove('bate'); cp.classList.remove('sai'); void cp.offsetWidth; cp.classList.add('imprime'); ocupado=false; }, 260);
@@ -908,7 +930,7 @@ function resumoMes(m){
   vs.forEach(v=>{ const t=v.qtd*v.preco; vendido+=t; paes+=v.qtd; porForma[v.forma]=(porForma[v.forma]||0)+t; });
   for(const cid in pc) pc[cid].forEach(f=>{ if(mesDe(f.v.data)===m) furoAberto+=f.falta; });
   const recebFiado = D.pagamentos.filter(p=>mesDe(p.data)===m).reduce((s,p)=>s+p.valor,0);
-  const custo = paes*D.cfg.custo, lucro = vendido - furoAberto - custo;
+  const custo = vs.reduce((s,v)=>s+custoDe(v),0), lucro = vendido - furoAberto - custo;
   return {vs, vendido, paes, porForma, furoAberto, recebFiado, custo, lucro, pctFuro: vendido? furoAberto/vendido*100 : 0};
 }
 function resumoHoje(){
@@ -916,7 +938,7 @@ function resumoHoje(){
   const vs = D.vendas.filter(v => eh(v.data)), pg = D.pagamentos.filter(p => eh(p.data));
   const naHora = vs.filter(v => v.forma !== 'fiado').reduce((t, v) => t + v.qtd * v.preco, 0);
   const fiadoHoje = vs.filter(v => v.forma === 'fiado').reduce((t, v) => t + v.qtd * v.preco, 0);
-  const deFiado = pg.reduce((t, p) => t + p.valor, 0), paes = vs.reduce((t, v) => t + v.qtd, 0), custo = paes * (D.cfg.custo || 0);
+  const deFiado = pg.reduce((t, p) => t + p.valor, 0), paes = vs.reduce((t, v) => t + v.qtd, 0), custo = vs.reduce((s, v) => s + custoDe(v), 0);
   return {paes, naHora, deFiado, fiadoHoje, custo, lucro:naHora + deFiado - custo};
 }
 function pintaMes(){
@@ -982,7 +1004,7 @@ function diasNegocio(){
     x.vs.push(v); x.paes += v.qtd; x.min.push(t.getHours()*60 + t.getMinutes()); if(v.forma !== 'fiado') x.receb += v.qtd*v.preco; });
   D.pagamentos.forEach(p => { const k = diaChave(p.data); if(mp[k]) mp[k].receb += p.valor; });
   return Object.values(mp).map(x => { const a = Math.min(...x.min), b = Math.max(...x.min), h = (b-a)/60;
-    return {...x, ini:a, fim:b, horas:h, lucro:x.receb - x.paes*custo, pph:h >= 0.25 ? x.paes/h : null, dow:new Date(x.k+'T12:00').getDay(), dia:new Date(x.k+'T12:00')}; }).sort((a,b)=>a.k<b.k?-1:1);
+    return {...x, ini:a, fim:b, horas:h, lucro:x.receb - x.vs.reduce((s,v)=>s+custoDe(v),0), pph:h >= 0.25 ? x.paes/h : null, dow:new Date(x.k+'T12:00').getDay(), dia:new Date(x.k+'T12:00')}; }).sort((a,b)=>a.k<b.k?-1:1);
 }
 function agrupa(ds, chaveFn){
   const g = {}; ds.forEach(d => { const k = chaveFn(d.dia); (g[k] ||= {k, dias:0, paes:0, receb:0, lucro:0, horas:0}); const x = g[k]; x.dias++; x.paes += d.paes; x.receb += d.receb; x.lucro += d.lucro; x.horas += d.horas; });
